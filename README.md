@@ -179,6 +179,22 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+**Python 3.13 Compatibility Issues:**
+If you encounter pydantic-core compilation errors with Python 3.13:
+```bash
+# Option 1: Use Python 3.11 (Recommended)
+brew install python@3.11
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements-py311.txt
+
+# Option 2: Try with updated requirements
+pip install -r requirements.txt
+
+# Option 3: Install pre-compiled wheels
+pip install --only-binary=all -r requirements.txt
+```
+
 **Docker Issues:**
 ```bash
 # Make sure Docker is running
