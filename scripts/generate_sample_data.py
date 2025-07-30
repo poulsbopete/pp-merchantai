@@ -40,31 +40,22 @@ CITIES = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelp
 
 def create_elasticsearch_client():
     """Create Elasticsearch client"""
-    import base64
     
     # Handle API key authentication for Elastic Cloud
     if ELASTICSEARCH_USERNAME and not ELASTICSEARCH_PASSWORD:
-        try:
-            # Decode the API key if it's base64 encoded
-            api_key = base64.b64decode(ELASTICSEARCH_USERNAME).decode('utf-8')
-            return Elasticsearch(
-                hosts=[{
-                    'host': ELASTICSEARCH_HOST.replace('https://', '').replace('http://', ''),
-                    'port': ELASTICSEARCH_PORT
-                }],
-                api_key=api_key,
-                verify_certs=True
-            )
-        except Exception as e:
-            logger.error(f"Failed to decode API key: {e}")
-            return None
+        # Use API key directly (no base64 decode for serverless)
+        return Elasticsearch(
+            [f"{ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}"],
+            api_key=ELASTICSEARCH_USERNAME,
+            verify_certs=True
+        )
     else:
         # Use traditional host/port connection
         return Elasticsearch([{
             'host': ELASTICSEARCH_HOST.replace('https://', '').replace('http://', ''),
             'port': ELASTICSEARCH_PORT
         }], 
-        http_auth=(ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD) if ELASTICSEARCH_USERNAME else None,
+        basic_auth=(ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD) if ELASTICSEARCH_USERNAME else None,
         verify_certs=True if ELASTICSEARCH_HOST.startswith('https') else False)
 
 def create_index(client):
