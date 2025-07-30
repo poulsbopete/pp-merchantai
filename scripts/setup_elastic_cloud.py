@@ -48,18 +48,13 @@ def create_elasticsearch_client():
             verify_certs=True
         )
     elif username and not password:
-        # Try to decode as base64 API key
-        api_key = decode_api_key(username)
-        if api_key and ':' in api_key:
-            logger.info("Using decoded API key authentication")
-            client = Elasticsearch(
-                [host],
-                api_key=api_key,
-                verify_certs=True
-            )
-        else:
-            logger.error("Invalid API key format")
-            return None
+        # Use API key directly (no base64 decode for serverless)
+        logger.info("Using direct API key authentication")
+        client = Elasticsearch(
+            [host],
+            api_key=username,
+            verify_certs=True
+        )
     else:
         # No authentication
         logger.info("Using no authentication")
