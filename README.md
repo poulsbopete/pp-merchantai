@@ -8,6 +8,9 @@ A model context protocol application for analyzing and troubleshooting PayPal me
 - **Location Data Validation**: Detect missing city/country information
 - **Month-to-Month Comparisons**: Track performance trends over time
 - **Error Rate Monitoring**: Identify merchants with >10% error fluctuations
+- **AI-Powered Location Resolution**: Automatically resolve missing city/country data using LLM
+- **AI-Generated Insights**: Get personalized troubleshooting recommendations for merchants
+- **Multi-LLM Support**: OpenAI (GPT-4) and Anthropic (Claude) integration
 - **Intelligent Troubleshooting**: AI-powered issue identification and recommendations
 
 ## Quick Start
@@ -123,6 +126,9 @@ open http://localhost:8000
 - `GET /api/analytics/location-issues`: Missing location data
 - `GET /api/analytics/monthly-comparison`: Month-to-month comparison
 - `POST /api/troubleshoot`: AI-powered troubleshooting
+- `POST /api/ai/resolve-locations`: AI-powered location resolution
+- `GET /api/ai/insights/{merchant_id}`: AI-generated merchant insights
+- `GET /api/ai/status`: AI agent status and capabilities
 
 ## Data Structure
 
@@ -139,6 +145,55 @@ The app expects Elasticsearch documents with the following structure:
   "timestamp": "datetime",
   "status": "string"
 }
+```
+
+## AI Features
+
+### LLM Integration Setup
+
+The application includes AI-powered features for automated location resolution and merchant insights. Configure LLM providers in your `.env` file:
+
+**For OpenAI (GPT-4):**
+```bash
+# Add to your .env file
+OPENAI_API_KEY=your-openai-api-key-here
+LLM_MODEL=gpt-4
+```
+
+**For Anthropic (Claude):**
+```bash
+# Add to your .env file
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+LLM_MODEL=claude-3-sonnet-20240229
+```
+
+### AI Capabilities
+
+1. **Automated Location Resolution**
+   - AI analyzes business names to predict missing city/country data
+   - Automatic updates to Elasticsearch with resolved locations
+   - Confidence scoring for each resolution
+   - Fallback to rule-based resolution if no API key
+
+2. **AI-Generated Insights**
+   - Personalized troubleshooting recommendations for each merchant
+   - Analysis of conversion rates, error rates, and performance patterns
+   - Actionable optimization strategies
+
+3. **Web Dashboard Integration**
+   - One-click AI location resolution
+   - Real-time AI status monitoring
+   - Interactive results display with confidence scores
+
+### Testing AI Features
+
+```bash
+# Test AI features (works with or without API keys)
+python scripts/test_ai_features.py
+
+# The app works in two modes:
+# - Without API keys: Uses rule-based resolution and basic insights
+# - With API keys: Full AI-powered analysis and recommendations
 ```
 
 ## Troubleshooting Features
