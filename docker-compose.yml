@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: paypal-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - paypal-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  app:
+    build: .
+    container_name: paypal-troubleshooting-app
+    ports:
+      - "8000:8000"
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_INDEX=paypal-merchants
+      - DEBUG=true
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - paypal-network
+    volumes:
+      - ./scripts:/app/scripts
+    command: >
+      sh -c "
+        echo 'Waiting for Elasticsearch to be ready...' &&
+        sleep 30 &&
+        python scripts/generate_sample_data.py &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+volumes:
+  elasticsearch_data:
+    driver: local
+
+networks:
+  paypal-network:
+    driver: bridge 
