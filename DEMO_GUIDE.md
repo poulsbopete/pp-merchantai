@@ -15,16 +15,23 @@ open http://localhost:8000
 
 ### Option 2: Manual Setup
 ```bash
-# 1. Start Elasticsearch
-docker run -d --name elasticsearch -p 9200:9200 -e 'discovery.type=single-node' elasticsearch:8.11.0
+# 1. Set up virtual environment (macOS/Linux)
+python3 -m venv venv
+source venv/bin/activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Generate sample data
+# 3. Start Elasticsearch
+docker run -d --name elasticsearch -p 9200:9200 -e 'discovery.type=single-node' elasticsearch:8.11.0
+
+# 4. Wait for Elasticsearch (about 30 seconds)
+curl http://localhost:9200
+
+# 5. Generate sample data
 python scripts/generate_sample_data.py
 
-# 4. Start the application
+# 6. Start the application
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -195,6 +202,14 @@ pip install -r requirements.txt
 
 # Check port availability
 lsof -i :8000
+```
+
+**macOS "externally-managed-environment" Error:**
+```bash
+# This is expected on macOS. Use virtual environment:
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ## 📝 Demo Script
