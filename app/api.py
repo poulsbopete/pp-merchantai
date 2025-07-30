@@ -5,11 +5,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from typing import List, Optional
 import logging
+from datetime import datetime
 
 from app.models import (
     Merchant, ConversionRateAnalysis, LocationIssue, MonthlyComparison,
     TroubleshootingRequest, TroubleshootingResponse, AnalyticsResponse, ErrorResponse
 )
+from app.llm_agent import LocationResolution
 from app.elastic_client import ElasticClient
 from app.analytics import AnalyticsService
 from app.config import settings
@@ -188,4 +190,44 @@ async def internal_error_handler(request: Request, exc: HTTPException):
     return templates.TemplateResponse("error.html", {
         "request": request,
         "error": "Internal server error"
-    }) 
+    })
+
+# LLM Agent Endpoints
+@app.post("/api/ai/resolve-locations", response_model=List[LocationResolution])
+async def resolve_location_issues_with_ai():
+    """Use AI to automatically resolve missing location information"""
+    try:
+        resolutions = await analytics_service.resolve_location_issues_with_ai()
+        return resolutions
+    except Exception as e:
+        logger.error(f"Failed to resolve locations with AI: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resolve locations with AI")
+
+@app.get("/api/ai/insights/{merchant_id}")
+async def get_ai_insights(merchant_id: str):
+    """Get AI-powered insights for a specific merchant"""
+    try:
+        insights = await analytics_service.get_ai_insights(merchant_id)
+        return {
+            "merchant_id": merchant_id,
+            "insights": insights,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to get AI insights for {merchant_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get AI insights")
+
+@app.get("/api/ai/status")
+async def get_ai_status():
+    """Get AI agent status and capabilities"""
+    from app.llm_agent import llm_agent
+    return {
+        "available": llm_agent.available,
+        "provider": llm_agent.provider if llm_agent.available else None,
+        "model": llm_agent.model if llm_agent.available else None,
+        "capabilities": [
+            "location_resolution",
+            "troubleshooting_insights",
+            "merchant_analysis"
+        ]
+    } 

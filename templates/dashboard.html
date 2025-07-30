@@ -94,6 +94,23 @@
                         </button>
                     </div>
                 </div>
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <button class="btn btn-success w-100 mb-2" onclick="resolveLocationsWithAI()">
+                            <i class="fas fa-robot me-2"></i>AI Location Resolution
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary w-100 mb-2" onclick="checkAIStatus()">
+                            <i class="fas fa-brain me-2"></i>AI Status
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-secondary w-100 mb-2" onclick="showAIInsights()">
+                            <i class="fas fa-lightbulb me-2"></i>AI Insights
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -118,6 +135,25 @@
                     </div>
                 </div>
                 <div id="troubleshootResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Agent Results Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-robot me-2"></i>AI Agent Results
+            </div>
+            <div class="card-body">
+                <div id="aiResults">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-robot fa-2x mb-2"></i>
+                        <p>Click an AI action above to see results here</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -402,6 +438,141 @@ async function troubleshootMerchant() {
         document.getElementById('troubleshootResult').innerHTML = resultHtml;
     } catch (error) {
         showError('troubleshootResult', 'Failed to troubleshoot merchant');
+    }
+}
+
+// AI Agent Functions
+async function resolveLocationsWithAI() {
+    try {
+        showLoading('aiResults');
+        const response = await fetch('/api/ai/resolve-locations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const resolutions = await response.json();
+        
+        if (resolutions.length === 0) {
+            document.getElementById('aiResults').innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No location issues found to resolve.
+                </div>
+            `;
+            return;
+        }
+        
+        const resultsHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-robot me-2"></i>AI Location Resolution Results
+                    <span class="badge bg-success ms-2">${resolutions.length} resolved</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Merchant</th>
+                                    <th>Original Location</th>
+                                    <th>Resolved Location</th>
+                                    <th>Confidence</th>
+                                    <th>Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${resolutions.map(resolution => `
+                                    <tr>
+                                        <td>${resolution.merchant_name}</td>
+                                        <td>${resolution.original_location.city || 'Missing'}, ${resolution.original_location.country || 'Missing'}</td>
+                                        <td>${resolution.resolved_location.city}, ${resolution.resolved_location.country}</td>
+                                        <td><span class="badge bg-${resolution.confidence_score > 0.8 ? 'success' : 'warning'}">${(resolution.confidence_score * 100).toFixed(0)}%</span></td>
+                                        <td><span class="badge bg-info">${resolution.resolution_method}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('aiResults').innerHTML = resultsHtml;
+    } catch (error) {
+        showError('aiResults', 'Failed to resolve locations with AI');
+    }
+}
+
+async function checkAIStatus() {
+    try {
+        const response = await fetch('/api/ai/status');
+        const status = await response.json();
+        
+        const statusHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-brain me-2"></i>AI Agent Status
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-${status.available ? 'success' : 'danger'}">
+                                    ${status.available ? 'Available' : 'Unavailable'}
+                                </span>
+                            </p>
+                            ${status.available ? `
+                                <p><strong>Provider:</strong> ${status.provider}</p>
+                                <p><strong>Model:</strong> ${status.model}</p>
+                            ` : '<p class="text-muted">No API key configured</p>'}
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Capabilities:</h6>
+                            <ul>
+                                ${status.capabilities.map(cap => `<li><i class="fas fa-check text-success me-2"></i>${cap.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('aiResults').innerHTML = statusHtml;
+    } catch (error) {
+        showError('aiResults', 'Failed to check AI status');
+    }
+}
+
+async function showAIInsights() {
+    const merchantId = prompt('Enter merchant ID for AI insights:');
+    if (!merchantId) return;
+    
+    try {
+        showLoading('aiResults');
+        const response = await fetch(`/api/ai/insights/${merchantId}`);
+        const data = await response.json();
+        
+        const insightsHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-lightbulb me-2"></i>AI Insights for ${merchantId}
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-robot me-2"></i>AI-Generated Recommendations
+                    </div>
+                    <div class="insights-content">
+                        ${data.insights.split('\n').map(line => `<p>${line}</p>`).join('')}
+                    </div>
+                    <small class="text-muted">Generated at: ${new Date(data.timestamp).toLocaleString()}</small>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('aiResults').innerHTML = insightsHtml;
+    } catch (error) {
+        showError('aiResults', 'Failed to get AI insights');
     }
 }
 </script>

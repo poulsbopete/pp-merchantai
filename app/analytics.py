@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from app.elastic_client import ElasticClient
 from app.models import ConversionRateAnalysis, LocationIssue, MonthlyComparison, TroubleshootingResponse
 from app.config import settings
+from app.llm_agent import llm_agent, LocationResolution
 
 logger = logging.getLogger(__name__)
 
@@ -261,4 +262,87 @@ class AnalyticsService:
                 "error_rate_issues": 0,
                 "issue_distribution": {},
                 "risk_levels": {"high": 0, "medium": 0, "low": 0}
-            } 
+            }
+    
+    async def resolve_location_issues_with_ai(self) -> List[LocationResolution]:
+        """Use AI to automatically resolve location issues"""
+        try:
+            # Get merchants with location issues
+            location_issues = await self.elastic.get_location_issues()
+            
+            # Convert to merchant data format for LLM agent
+            merchants_with_issues = []
+            for issue in location_issues:
+                merchant_data = await self.elastic.get_merchant_by_id(issue["merchant_id"])
+                if merchant_data:
+                    merchants_with_issues.append(merchant_data)
+            
+            # Use LLM agent to resolve issues
+            resolutions = llm_agent.resolve_location_issues(merchants_with_issues)
+            
+            # Update Elasticsearch with resolved locations
+            for resolution in resolutions:
+                await self._update_merchant_location(resolution)
+            
+            return resolutions
+        except Exception as e:
+            logger.error(f"Failed to resolve location issues with AI: {e}")
+            return []
+    
+    async def _update_merchant_location(self, resolution: LocationResolution):
+        """Update merchant location in Elasticsearch"""
+        try:
+            # Update the merchant's location data
+            update_body = {
+                "doc": {
+                    "location": resolution.resolved_location
+                }
+            }
+            
+            # Find and update all documents for this merchant
+            search_response = await self.elastic.client.search(
+                index=self.elastic.index,
+                body={
+                    "query": {"term": {"merchant_id": resolution.merchant_id}},
+                    "size": 1000
+                }
+            )
+            
+            for hit in search_response["hits"]["hits"]:
+                doc_id = hit["_id"]
+                await self.elastic.client.update(
+                    index=self.elastic.index,
+                    id=doc_id,
+                    body=update_body
+                )
+            
+            logger.info(f"Updated location for merchant {resolution.merchant_id}")
+        except Exception as e:
+            logger.error(f"Failed to update merchant location: {e}")
+    
+    async def get_ai_insights(self, merchant_id: str) -> str:
+        """Get AI-powered insights for a specific merchant"""
+        try:
+            merchant_data = await self.elastic.get_merchant_by_id(merchant_id)
+            if not merchant_data:
+                return "Merchant not found."
+            
+            # Get recent performance data
+            recent_data = await self.elastic.client.search(
+                index=self.elastic.index,
+                body={
+                    "query": {"term": {"merchant_id": merchant_id}},
+                    "sort": [{"timestamp": {"order": "desc"}}],
+                    "size": 1
+                }
+            )
+            
+            if recent_data["hits"]["hits"]:
+                latest_data = recent_data["hits"]["hits"][0]["_source"]
+                return llm_agent.generate_troubleshooting_insights(latest_data)
+            else:
+                return "No recent data available for analysis."
+                
+        except Exception as e:
+            logger.error(f"Failed to get AI insights: {e}")
+            return "Unable to generate insights at this time." 
