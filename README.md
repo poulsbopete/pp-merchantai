@@ -47,9 +47,10 @@ pip install -r requirements.txt
 ```
 
 ### 3. Set Environment Variables
-Create a `.env` file with your Elasticsearch configuration:
+
+**For Local Elasticsearch:**
 ```bash
-# Create .env file
+# Create .env file for local Elasticsearch
 cat > .env << EOF
 ELASTICSEARCH_HOST=localhost
 ELASTICSEARCH_PORT=9200
@@ -60,13 +61,34 @@ DEBUG=true
 EOF
 ```
 
-### 4. Start Elasticsearch
+**For Elastic Cloud:**
+```bash
+# Create .env file for Elastic Cloud
+cat > .env << EOF
+ELASTICSEARCH_HOST=https://your-deployment.es.us-east-1.aws.elastic.cloud
+ELASTICSEARCH_PORT=443
+ELASTICSEARCH_USERNAME=your-api-key-base64-encoded
+ELASTICSEARCH_PASSWORD=
+ELASTICSEARCH_INDEX=paypal-merchants
+DEBUG=true
+EOF
+```
+
+### 4. Set Up Elasticsearch
+
+**For Local Elasticsearch:**
 ```bash
 # Start Elasticsearch with Docker
 docker run -d --name elasticsearch -p 9200:9200 -e 'discovery.type=single-node' elasticsearch:8.11.0
 
 # Wait for Elasticsearch to be ready (about 30 seconds)
 curl http://localhost:9200
+```
+
+**For Elastic Cloud:**
+```bash
+# Set up Elastic Cloud connection and create index
+python scripts/setup_elastic_cloud.py
 ```
 
 ### 5. Generate Sample Data

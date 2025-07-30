@@ -15,9 +15,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Elasticsearch configuration
-ELASTICSEARCH_HOST = "localhost"
-ELASTICSEARCH_PORT = 9200
-INDEX_NAME = "paypal-merchants"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "localhost")
+ELASTICSEARCH_PORT = int(os.getenv("ELASTICSEARCH_PORT", "9200"))
+ELASTICSEARCH_USERNAME = os.getenv("ELASTICSEARCH_USERNAME", "")
+ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD", "")
+INDEX_NAME = os.getenv("ELASTICSEARCH_INDEX", "paypal-merchants")
 
 # Sample data
 MERCHANT_NAMES = [
@@ -33,10 +40,32 @@ CITIES = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelp
 
 def create_elasticsearch_client():
     """Create Elasticsearch client"""
-    return Elasticsearch([{
-        'host': ELASTICSEARCH_HOST,
-        'port': ELASTICSEARCH_PORT
-    }])
+    import base64
+    
+    # Handle API key authentication for Elastic Cloud
+    if ELASTICSEARCH_USERNAME and not ELASTICSEARCH_PASSWORD:
+        try:
+            # Decode the API key if it's base64 encoded
+            api_key = base64.b64decode(ELASTICSEARCH_USERNAME).decode('utf-8')
+            return Elasticsearch(
+                hosts=[{
+                    'host': ELASTICSEARCH_HOST.replace('https://', '').replace('http://', ''),
+                    'port': ELASTICSEARCH_PORT
+                }],
+                api_key=api_key,
+                verify_certs=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to decode API key: {e}")
+            return None
+    else:
+        # Use traditional host/port connection
+        return Elasticsearch([{
+            'host': ELASTICSEARCH_HOST.replace('https://', '').replace('http://', ''),
+            'port': ELASTICSEARCH_PORT
+        }], 
+        http_auth=(ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD) if ELASTICSEARCH_USERNAME else None,
+        verify_certs=True if ELASTICSEARCH_HOST.startswith('https') else False)
 
 def create_index(client):
     """Create the index with proper mapping"""

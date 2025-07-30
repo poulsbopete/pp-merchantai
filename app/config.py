@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     elasticsearch_username: str = os.getenv("ELASTICSEARCH_USERNAME", "")
     elasticsearch_password: str = os.getenv("ELASTICSEARCH_PASSWORD", "")
     elasticsearch_index: str = os.getenv("ELASTICSEARCH_INDEX", "paypal-merchants")
-    elasticsearch_use_ssl: bool = os.getenv("ELASTICSEARCH_USE_SSL", "false").lower() == "true"
+    elasticsearch_use_ssl: bool = os.getenv("ELASTICSEARCH_USE_SSL", "true").lower() == "true"
+    elasticsearch_cloud_id: str = os.getenv("ELASTICSEARCH_CLOUD_ID", "")
     
     # Application settings
     app_title: str = "PayPal Merchant Troubleshooting"

@@ -10,15 +10,25 @@ class ElasticClient:
     """Elasticsearch client for merchant data operations"""
     
     def __init__(self):
-        self.client = Elasticsearch(
-            hosts=[{
-                'host': settings.elasticsearch_host,
-                'port': settings.elasticsearch_port
-            }],
-            http_auth=(settings.elasticsearch_username, settings.elasticsearch_password) if settings.elasticsearch_username else None,
-            use_ssl=settings.elasticsearch_use_ssl,
-            verify_certs=False if settings.elasticsearch_use_ssl else True
-        )
+        # Handle Elastic Cloud connection
+        if settings.elasticsearch_cloud_id:
+            # Use cloud_id for Elastic Cloud
+            self.client = Elasticsearch(
+                cloud_id=settings.elasticsearch_cloud_id,
+                http_auth=(settings.elasticsearch_username, settings.elasticsearch_password) if settings.elasticsearch_username else None,
+                verify_certs=True
+            )
+        else:
+            # Use traditional host/port connection
+            self.client = Elasticsearch(
+                hosts=[{
+                    'host': settings.elasticsearch_host,
+                    'port': settings.elasticsearch_port
+                }],
+                http_auth=(settings.elasticsearch_username, settings.elasticsearch_password) if settings.elasticsearch_username else None,
+                use_ssl=settings.elasticsearch_use_ssl,
+                verify_certs=True if settings.elasticsearch_use_ssl else False
+            )
         self.index = settings.elasticsearch_index
     
     async def health_check(self) -> bool:
