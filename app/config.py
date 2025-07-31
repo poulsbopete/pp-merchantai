@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     error_rate_threshold: float = 0.1  # 10% error threshold
     min_transaction_count: int = 100  # Minimum transactions for analysis
     
+    # LLM settings
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+    llm_model: str = os.getenv("LLM_MODEL", "gpt-4")
+    
     class Config:
         env_file = ".env"
 

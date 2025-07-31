@@ -277,5 +277,107 @@ class LLMAgent:
             logger.error(f"Failed to generate insights: {e}")
             return "Unable to generate AI insights at this time."
 
+    def generate_conversion_rate_recommendation(self, merchant_data: Dict, issue: Dict) -> str:
+        """Generate AI-powered recommendations for conversion rate issues"""
+        if not self.available:
+            return "LLM not available for conversion rate analysis."
+        
+        try:
+            prompt = f"""
+            Analyze this PayPal merchant's conversion rate issue and provide specific recommendations:
+            
+            Merchant: {merchant_data.get('merchant_name', 'Unknown')}
+            Current Conversion Rate: {issue.get('conversion_rate', 0):.2%}
+            Issue Severity: {issue.get('severity', 'medium')}
+            Transaction Count: {merchant_data.get('transaction_count', 0)}
+            Business Type: {merchant_data.get('merchant_name', 'Unknown')}
+            
+            Provide specific, actionable recommendations to improve conversion rate.
+            Focus on:
+            1. Payment flow optimization
+            2. User experience improvements
+            3. Fraud detection settings
+            4. Mobile optimization
+            5. A/B testing strategies
+            
+            Keep the response concise and practical.
+            """
+            
+            if self.provider == "openai":
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": "You are a PayPal conversion optimization specialist."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=250
+                )
+                return response.choices[0].message.content
+            else:  # anthropic
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=250,
+                    temperature=0.3,
+                    system="You are a PayPal conversion optimization specialist.",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return response.content[0].text
+                
+        except Exception as e:
+            logger.error(f"Failed to generate conversion rate recommendation: {e}")
+            return "Unable to generate conversion rate recommendations at this time."
+
+    def generate_error_rate_recommendation(self, merchant_data: Dict, issue: Dict) -> str:
+        """Generate AI-powered recommendations for error rate issues"""
+        if not self.available:
+            return "LLM not available for error rate analysis."
+        
+        try:
+            prompt = f"""
+            Analyze this PayPal merchant's error rate issue and provide specific recommendations:
+            
+            Merchant: {merchant_data.get('merchant_name', 'Unknown')}
+            Current Error Rate: {issue.get('error_rate', 0):.2%}
+            Issue Severity: {issue.get('severity', 'medium')}
+            Transaction Count: {merchant_data.get('transaction_count', 0)}
+            Business Type: {merchant_data.get('merchant_name', 'Unknown')}
+            
+            Provide specific, actionable recommendations to reduce error rates.
+            Focus on:
+            1. Payment processing optimization
+            2. API integration improvements
+            3. Error handling and retry logic
+            4. System monitoring and alerts
+            5. Technical debt reduction
+            
+            Keep the response concise and practical.
+            """
+            
+            if self.provider == "openai":
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": "You are a PayPal technical support specialist."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=250
+                )
+                return response.choices[0].message.content
+            else:  # anthropic
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=250,
+                    temperature=0.3,
+                    system="You are a PayPal technical support specialist.",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return response.content[0].text
+                
+        except Exception as e:
+            logger.error(f"Failed to generate error rate recommendation: {e}")
+            return "Unable to generate error rate recommendations at this time."
+
 # Global instance
 llm_agent = LLMAgent() 

@@ -95,18 +95,30 @@
                     </div>
                 </div>
                 <div class="row mt-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <button class="btn btn-success w-100 mb-2" onclick="resolveLocationsWithAI()">
                             <i class="fas fa-robot me-2"></i>AI Location Resolution
                         </button>
                     </div>
-                    <div class="col-md-4">
-                        <button class="btn btn-primary w-100 mb-2" onclick="checkAIStatus()">
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100 mb-2" onclick="resolveConversionRatesWithAI()">
+                            <i class="fas fa-chart-line me-2"></i>AI Conversion Rate Fix
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-danger w-100 mb-2" onclick="resolveErrorRatesWithAI()">
+                            <i class="fas fa-exclamation-triangle me-2"></i>AI Error Rate Fix
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-info w-100 mb-2" onclick="checkAIStatus()">
                             <i class="fas fa-brain me-2"></i>AI Status
                         </button>
                     </div>
-                    <div class="col-md-4">
-                        <button class="btn btn-secondary w-100 mb-2" onclick="showAIInsights()">
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <button class="btn btn-warning w-100 mb-2" onclick="showAIInsights()">
                             <i class="fas fa-lightbulb me-2"></i>AI Insights
                         </button>
                     </div>
@@ -636,6 +648,130 @@ async function checkAIStatus() {
         document.getElementById('aiResults').innerHTML = statusHtml;
     } catch (error) {
         showError('aiResults', 'Failed to check AI status');
+    }
+}
+
+async function resolveConversionRatesWithAI() {
+    try {
+        showLoading('aiResults');
+        const response = await fetch('/api/ai/resolve-conversion-rates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const recommendations = await response.json();
+        
+        if (recommendations.length === 0) {
+            document.getElementById('aiResults').innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No conversion rate issues found to analyze.
+                </div>
+            `;
+            return;
+        }
+        
+        const resultsHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2"></i>AI Conversion Rate Analysis
+                    <span class="badge bg-primary ms-2">${recommendations.length} analyzed</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Merchant</th>
+                                    <th>Current Rate</th>
+                                    <th>Severity</th>
+                                    <th>AI Recommendation</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recommendations.map(rec => `
+                                    <tr>
+                                        <td><strong>${rec.merchant_name}</strong></td>
+                                        <td><span class="badge bg-${rec.current_conversion_rate < 0.3 ? 'danger' : 'warning'}">${(rec.current_conversion_rate * 100).toFixed(1)}%</span></td>
+                                        <td><span class="badge bg-${rec.issue_severity === 'high' ? 'danger' : 'warning'}">${rec.issue_severity}</span></td>
+                                        <td><small>${rec.ai_recommendation}</small></td>
+                                        <td><span class="badge bg-success">${(rec.confidence_score * 100).toFixed(0)}%</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('aiResults').innerHTML = resultsHtml;
+    } catch (error) {
+        showError('aiResults', 'Failed to analyze conversion rates with AI');
+    }
+}
+
+async function resolveErrorRatesWithAI() {
+    try {
+        showLoading('aiResults');
+        const response = await fetch('/api/ai/resolve-error-rates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const recommendations = await response.json();
+        
+        if (recommendations.length === 0) {
+            document.getElementById('aiResults').innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No error rate issues found to analyze.
+                </div>
+            `;
+            return;
+        }
+        
+        const resultsHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-exclamation-triangle me-2"></i>AI Error Rate Analysis
+                    <span class="badge bg-danger ms-2">${recommendations.length} analyzed</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Merchant</th>
+                                    <th>Current Rate</th>
+                                    <th>Severity</th>
+                                    <th>AI Recommendation</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recommendations.map(rec => `
+                                    <tr>
+                                        <td><strong>${rec.merchant_name}</strong></td>
+                                        <td><span class="badge bg-${rec.current_error_rate > 0.1 ? 'danger' : 'warning'}">${(rec.current_error_rate * 100).toFixed(1)}%</span></td>
+                                        <td><span class="badge bg-${rec.issue_severity === 'high' ? 'danger' : 'warning'}">${rec.issue_severity}</span></td>
+                                        <td><small>${rec.ai_recommendation}</small></td>
+                                        <td><span class="badge bg-success">${(rec.confidence_score * 100).toFixed(0)}%</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('aiResults').innerHTML = resultsHtml;
+    } catch (error) {
+        showError('aiResults', 'Failed to analyze error rates with AI');
     }
 }
 

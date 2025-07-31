@@ -20,7 +20,8 @@ class ElasticClient:
             )
         else:
             # Use traditional host/port connection with API key
-            hosts = [f"{settings.elasticsearch_host}:{settings.elasticsearch_port}"]
+            host = settings.elasticsearch_host.replace("https://", "").replace("http://", "")
+            hosts = [{"host": host, "port": int(settings.elasticsearch_port), "scheme": "https"}]
             
             # Use API key authentication for serverless
             if settings.elasticsearch_username and not settings.elasticsearch_password:

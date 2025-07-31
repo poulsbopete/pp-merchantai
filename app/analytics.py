@@ -289,8 +289,17 @@ class AnalyticsService:
             # Convert to merchant data format for LLM agent
             merchants_with_issues = []
             for issue in location_issues:
+                # Try to get merchant data, with fallback to search
                 merchant_data = await self.elastic.get_merchant_by_id(issue["merchant_id"])
+                if not merchant_data:
+                    # Try searching by merchant name as fallback
+                    search_results = await self.elastic.search_merchants(issue["merchant_name"])
+                    if search_results:
+                        merchant_data = search_results[0]
+                
                 if merchant_data:
+                    # Add missing fields information to the merchant data
+                    merchant_data["missing_fields"] = issue["missing_fields"]
                     merchants_with_issues.append(merchant_data)
             
             # Use LLM agent to resolve issues
@@ -361,4 +370,70 @@ class AnalyticsService:
                 
         except Exception as e:
             logger.error(f"Failed to get AI insights: {e}")
-            return "Unable to generate insights at this time." 
+            return "Unable to generate insights at this time."
+
+    async def resolve_conversion_rate_issues_with_ai(self) -> List[Dict[str, Any]]:
+        """Use AI to analyze and provide recommendations for conversion rate issues"""
+        try:
+            # Get merchants with conversion rate issues
+            conversion_issues = await self.elastic.get_conversion_rate_issues()
+            
+            ai_recommendations = []
+            for issue in conversion_issues[:5]:  # Limit to 5 for demo
+                # Get merchant data
+                merchant_data = await self.elastic.get_merchant_by_id(issue["merchant_id"])
+                if not merchant_data:
+                    search_results = await self.elastic.search_merchants(issue["merchant_id"])
+                    if search_results:
+                        merchant_data = search_results[0]
+                
+                if merchant_data:
+                    # Generate AI recommendation
+                    recommendation = llm_agent.generate_conversion_rate_recommendation(merchant_data, issue)
+                    ai_recommendations.append({
+                        "merchant_id": issue["merchant_id"],
+                        "merchant_name": merchant_data.get("merchant_name", "Unknown"),
+                        "current_conversion_rate": issue["conversion_rate"],
+                        "issue_severity": issue["severity"],
+                        "ai_recommendation": recommendation,
+                        "confidence_score": 0.85,
+                        "resolution_method": "ai_analysis"
+                    })
+            
+            return ai_recommendations
+        except Exception as e:
+            logger.error(f"Failed to resolve conversion rate issues with AI: {e}")
+            return []
+
+    async def resolve_error_rate_issues_with_ai(self) -> List[Dict[str, Any]]:
+        """Use AI to analyze and provide recommendations for error rate issues"""
+        try:
+            # Get merchants with error rate issues
+            error_issues = await self.elastic.get_error_rate_issues()
+            
+            ai_recommendations = []
+            for issue in error_issues[:5]:  # Limit to 5 for demo
+                # Get merchant data
+                merchant_data = await self.elastic.get_merchant_by_id(issue["merchant_id"])
+                if not merchant_data:
+                    search_results = await self.elastic.search_merchants(issue["merchant_id"])
+                    if search_results:
+                        merchant_data = search_results[0]
+                
+                if merchant_data:
+                    # Generate AI recommendation
+                    recommendation = llm_agent.generate_error_rate_recommendation(merchant_data, issue)
+                    ai_recommendations.append({
+                        "merchant_id": issue["merchant_id"],
+                        "merchant_name": merchant_data.get("merchant_name", "Unknown"),
+                        "current_error_rate": issue["error_rate"],
+                        "issue_severity": issue["severity"],
+                        "ai_recommendation": recommendation,
+                        "confidence_score": 0.82,
+                        "resolution_method": "ai_analysis"
+                    })
+            
+            return ai_recommendations
+        except Exception as e:
+            logger.error(f"Failed to resolve error rate issues with AI: {e}")
+            return [] 

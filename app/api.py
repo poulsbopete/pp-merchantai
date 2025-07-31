@@ -228,6 +228,28 @@ async def get_ai_status():
         "capabilities": [
             "location_resolution",
             "troubleshooting_insights",
-            "merchant_analysis"
+            "merchant_analysis",
+            "conversion_rate_optimization",
+            "error_rate_reduction"
         ]
-    } 
+    }
+
+@app.post("/api/ai/resolve-conversion-rates")
+async def resolve_conversion_rate_issues_with_ai():
+    """Use AI to analyze and provide recommendations for conversion rate issues"""
+    try:
+        recommendations = await analytics_service.resolve_conversion_rate_issues_with_ai()
+        return recommendations
+    except Exception as e:
+        logger.error(f"Failed to resolve conversion rate issues with AI: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resolve conversion rate issues with AI")
+
+@app.post("/api/ai/resolve-error-rates")
+async def resolve_error_rate_issues_with_ai():
+    """Use AI to analyze and provide recommendations for error rate issues"""
+    try:
+        recommendations = await analytics_service.resolve_error_rate_issues_with_ai()
+        return recommendations
+    except Exception as e:
+        logger.error(f"Failed to resolve error rate issues with AI: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resolve error rate issues with AI") 

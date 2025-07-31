@@ -50,8 +50,10 @@ def create_elasticsearch_client():
     elif username and not password:
         # Use API key directly (no base64 decode for serverless)
         logger.info("Using direct API key authentication")
+        host_clean = host.replace("https://", "").replace("http://", "")
+        hosts = [{"host": host_clean, "port": int(port), "scheme": "https"}]
         client = Elasticsearch(
-            [host],
+            hosts,
             api_key=username,
             verify_certs=True
         )

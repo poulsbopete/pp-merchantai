@@ -44,8 +44,10 @@ def create_elasticsearch_client():
     # Handle API key authentication for Elastic Cloud
     if ELASTICSEARCH_USERNAME and not ELASTICSEARCH_PASSWORD:
         # Use API key directly (no base64 decode for serverless)
+        host_clean = ELASTICSEARCH_HOST.replace("https://", "").replace("http://", "")
+        hosts = [{"host": host_clean, "port": int(ELASTICSEARCH_PORT), "scheme": "https"}]
         return Elasticsearch(
-            [f"{ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}"],
+            hosts,
             api_key=ELASTICSEARCH_USERNAME,
             verify_certs=True
         )
