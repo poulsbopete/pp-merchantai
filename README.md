@@ -160,12 +160,19 @@ OPENAI_API_KEY=your-openai-api-key-here
 LLM_MODEL=gpt-4
 ```
 
-**For Anthropic (Claude):**
-```bash
-# Add to your .env file
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-LLM_MODEL=claude-3-sonnet-20240229
-```
+            **For Anthropic (Claude):**
+            ```bash
+            # Add to your .env file
+            ANTHROPIC_API_KEY=your-anthropic-api-key-here
+            LLM_MODEL=claude-3-sonnet-20240229
+            ```
+            
+            **Demo Mode (Recommended for Testing):**
+            ```bash
+            # Add to your .env file to avoid API throttling
+            DEMO_MODE=true
+            ```
+            *Demo mode uses cached responses and fallback recommendations to avoid API rate limits*
 
 ### AI Capabilities
 

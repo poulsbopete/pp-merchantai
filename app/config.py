@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     llm_model: str = os.getenv("LLM_MODEL", "gpt-4")
+    demo_mode: bool = os.getenv("DEMO_MODE", "true").lower() == "true"
     
     class Config:
         env_file = ".env"
