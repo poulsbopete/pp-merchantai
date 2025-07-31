@@ -126,7 +126,8 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-8">
-                        <input type="text" id="merchantSearch" class="form-control" placeholder="Enter merchant ID or name...">
+                        <input type="text" id="merchantSearch" class="form-control" placeholder="Enter merchant ID or name..." oninput="searchMerchants(this.value)">
+                        <div id="merchantSearchResults" class="list-group mt-2" style="display: none; position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto;"></div>
                     </div>
                     <div class="col-md-4">
                         <button class="btn btn-primary w-100" onclick="troubleshootMerchant()">
@@ -378,10 +379,41 @@ async function loadMonthlyComparison() {
     }
 }
 
+async function searchMerchants(query) {
+    if (query.length < 2) {
+        document.getElementById('merchantSearchResults').style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/search/merchants?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        
+        const resultsDiv = document.getElementById('merchantSearchResults');
+        if (data.results.length > 0) {
+            resultsDiv.innerHTML = data.results.map(merchant => `
+                <a href="#" class="list-group-item list-group-item-action" onclick="selectMerchant('${merchant.merchant_id}', '${merchant.merchant_name}')">
+                    <strong>${merchant.merchant_name}</strong> (${merchant.merchant_id})
+                </a>
+            `).join('');
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Search failed:', error);
+    }
+}
+
+function selectMerchant(merchantId, merchantName) {
+    document.getElementById('merchantSearch').value = merchantId;
+    document.getElementById('merchantSearchResults').style.display = 'none';
+}
+
 async function troubleshootMerchant() {
     const merchantId = document.getElementById('merchantSearch').value.trim();
     if (!merchantId) {
-        alert('Please enter a merchant ID');
+        alert('Please enter a merchant ID or search for a merchant name');
         return;
     }
     
@@ -545,18 +577,33 @@ async function checkAIStatus() {
 }
 
 async function showAIInsights() {
-    const merchantId = prompt('Enter merchant ID for AI insights:');
-    if (!merchantId) return;
+    const merchantName = prompt('Enter merchant name (e.g., "Global Retail Inc"):');
+    if (!merchantName) return;
     
     try {
         showLoading('aiResults');
-        const response = await fetch(`/api/ai/insights/${merchantId}`);
+        
+        // First search for the merchant
+        const searchResponse = await fetch(`/api/search/merchants?q=${encodeURIComponent(merchantName)}`);
+        const searchData = await searchResponse.json();
+        
+        if (searchData.results.length === 0) {
+            document.getElementById('aiResults').innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Merchant not found: ${merchantName}
+                </div>
+            `;
+            return;
+        }
+        
+        const merchant = searchData.results[0];
+        const response = await fetch(`/api/ai/insights/${merchant.merchant_id}`);
         const data = await response.json();
         
         const insightsHtml = `
             <div class="card">
                 <div class="card-header">
-                    <i class="fas fa-lightbulb me-2"></i>AI Insights for ${merchantId}
+                    <i class="fas fa-lightbulb me-2"></i>AI Insights for ${merchant.merchant_name}
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
