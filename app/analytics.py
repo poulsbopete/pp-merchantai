@@ -129,13 +129,18 @@ class AnalyticsService:
             # Get merchant data
             merchant_data = await self.elastic.get_merchant_by_id(merchant_id)
             if not merchant_data:
-                return TroubleshootingResponse(
-                    issues_found=[],
-                    recommendations=["Merchant not found"],
-                    priority_actions=[],
-                    risk_score=0.0,
-                    next_steps=["Verify merchant ID"]
-                )
+                # Try to find merchant by searching
+                search_results = await self.elastic.search_merchants(merchant_id)
+                if search_results:
+                    merchant_data = search_results[0]
+                else:
+                    return TroubleshootingResponse(
+                        issues_found=[],
+                        recommendations=["Merchant not found"],
+                        priority_actions=[],
+                        risk_score=0.0,
+                        next_steps=["Verify merchant ID"]
+                    )
             
             # Check conversion rate issues
             conversion_issues = await self.elastic.get_conversion_rate_issues()
@@ -151,15 +156,26 @@ class AnalyticsService:
                 recommendations.append("Review payment flow and checkout process")
                 priority_actions.append("Analyze failed transaction patterns")
             
-            # Check location issues
+            # Check location issues - both from location issues list and direct merchant data
             location_issues = await self.elastic.get_location_issues()
             merchant_location_issue = next((issue for issue in location_issues if issue["merchant_id"] == merchant_id), None)
             
-            if merchant_location_issue:
+            # Also check the merchant's current data directly for missing location
+            missing_fields = []
+            if not merchant_data.get("country") or merchant_data.get("country") == "":
+                missing_fields.append("country")
+            if not merchant_data.get("city") or merchant_data.get("city") == "":
+                missing_fields.append("city")
+            
+            if merchant_location_issue or missing_fields:
+                # Use the location issue if available, otherwise use direct check
+                if merchant_location_issue:
+                    missing_fields = merchant_location_issue["missing_fields"]
+                
                 issues_found.append({
                     "type": "missing_location",
-                    "severity": "high" if len(merchant_location_issue["missing_fields"]) == 2 else "medium",
-                    "details": f"Missing: {', '.join(merchant_location_issue['missing_fields'])}"
+                    "severity": "high" if len(missing_fields) == 2 else "medium",
+                    "details": f"Missing: {', '.join(missing_fields)}"
                 })
                 risk_score += 0.3
                 recommendations.append("Update merchant profile with location information")
