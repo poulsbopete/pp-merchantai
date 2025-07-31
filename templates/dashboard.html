@@ -84,7 +84,7 @@
                         </button>
                     </div>
                     <div class="col-md-3">
-                        <button class="btn btn-danger w-100 mb-2" onclick="loadErrorIssues()">
+                        <button class="btn btn-danger w-100 mb-2" onclick="loadErrorRateIssues()">
                             <i class="fas fa-exclamation-circle me-2"></i>Error Rate Issues
                         </button>
                     </div>
@@ -174,7 +174,7 @@
 
 <!-- Issues Tables -->
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-header">
                 <i class="fas fa-chart-line me-2"></i>Conversion Rate Issues
@@ -189,7 +189,22 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-exclamation-triangle me-2"></i>Error Rate Issues
+                <span class="badge bg-danger ms-2">{{ summary.error_rate_issues }}</span>
+            </div>
+            <div class="card-body">
+                <div id="errorRateIssuesTable">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
         <div class="card">
             <div class="card-header">
                 <i class="fas fa-map-marker-alt me-2"></i>Location Data Issues
@@ -213,6 +228,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     initializeCharts();
     loadConversionIssues();
+    loadErrorRateIssues();
     loadLocationIssues();
 });
 
@@ -305,7 +321,14 @@ async function loadConversionIssues() {
                     <tbody>
                         ${issues.slice(0, 5).map(issue => `
                             <tr>
-                                <td>${issue.merchant_name}</td>
+                                <td>
+                                    <a href="#" class="text-primary fw-bold clickable-merchant" 
+                                       onclick="loadMerchantForAI('${issue.merchant_name}')" 
+                                       title="Click to load ${issue.merchant_name} into AI workflow">
+                                        ${issue.merchant_name}
+                                        <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
+                                    </a>
+                                </td>
                                 <td>${formatPercentage(issue.current_rate)}</td>
                                 <td class="${issue.change_percentage < 0 ? 'text-danger' : 'text-success'}">
                                     ${issue.change_percentage > 0 ? '+' : ''}${issue.change_percentage.toFixed(1)}%
@@ -374,15 +397,53 @@ async function loadLocationIssues() {
     }
 }
 
-async function loadErrorIssues() {
+async function loadErrorRateIssues() {
     try {
+        showLoading('errorRateIssuesTable');
         const response = await fetch('/api/analytics/error-rates');
-        const data = await response.json();
+        const result = await response.json();
+        const issues = result.data || [];
         
-        // Show results in a modal or update a section
-        alert(`Found ${data.issues_found} merchants with high error rates`);
+        if (issues.length === 0) {
+            document.getElementById('errorRateIssuesTable').innerHTML = 
+                '<div class="text-center text-muted">No error rate issues found</div>';
+            return;
+        }
+        
+        const table = `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Merchant</th>
+                            <th>Rate</th>
+                            <th>Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${issues.slice(0, 5).map(issue => `
+                            <tr>
+                                <td>
+                                    <a href="#" class="text-primary fw-bold clickable-merchant" 
+                                       onclick="loadMerchantForAI('${issue.merchant_name}')" 
+                                       title="Click to load ${issue.merchant_name} into AI workflow">
+                                        ${issue.merchant_name}
+                                        <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
+                                    </a>
+                                </td>
+                                <td>${formatPercentage(issue.error_rate)}</td>
+                                <td><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
+        `;
+        
+        document.getElementById('errorRateIssuesTable').innerHTML = table;
     } catch (error) {
-        alert('Failed to load error rate issues');
+        showError('errorRateIssuesTable', 'Failed to load error rate issues');
     }
 }
 
