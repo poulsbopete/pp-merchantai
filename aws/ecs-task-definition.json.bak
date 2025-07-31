@@ -27,7 +27,7 @@
         },
         {
           "name": "ELASTICSEARCH_USERNAME",
-          "value": ""
+          "value": "ELASTICSEARCH_USERNAME_PLACEHOLDER"
         },
         {
           "name": "ELASTICSEARCH_INDEX",

@@ -151,6 +151,51 @@ export AWS_DEFAULT_REGION="us-east-1"
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
+### Architecture Overview & Value of Elastic Cloud
+
+The application is designed for cloud-native, scalable troubleshooting of PayPal merchant issues. At its core, Elastic Cloud (Elasticsearch) acts as the central data store for all merchant analytics, error rates, and conversion data. This enables:
+- **Real-time search and aggregation** for fast triage and root cause analysis.
+- **AI-powered workflows**: The LLM agent leverages structured merchant data from Elastic to resolve missing information and generate actionable insights.
+- **Seamless integration** with AWS services (ECS, ALB, CloudFront) for secure, scalable, and highly available deployment.
+
+The diagram below highlights the flow of data and the pivotal role of Elastic Cloud in powering both the dashboard and the AI agentic workflow.
+
+```mermaid
+flowchart TD
+    subgraph User
+        U1["Merchant Dashboard User"]
+    end
+    subgraph Frontend
+        FE["Web Dashboard (FastAPI, Jinja2, Bootstrap, JS)"]
+    end
+    subgraph AWS["AWS Cloud (ECS Fargate, ALB, S3, CloudFront)"]
+        ALB["Application Load Balancer"]
+        ECS["ECS Fargate<br/>pp-merchantai container"]
+        S3["S3 (Static Assets)"]
+        CF["CloudFront (CDN)"]
+    end
+    subgraph Elastic["Elastic Cloud (Serverless)"]
+        ES["Elasticsearch<br/>Merchant Data Index"]
+    end
+    subgraph AI["LLM Providers"]
+        OAI["OpenAI GPT-4"]
+        CLAUDE["Anthropic Claude"]
+    end
+    U1 -->|HTTPS| CF
+    CF -->|HTTPS| ALB
+    ALB -->|HTTP:8000| ECS
+    ECS -->|REST API| FE
+    FE -->|REST API| ECS
+    ECS -->|Elasticsearch API| ES
+    ECS -->|API| OAI
+    ECS -->|API| CLAUDE
+    FE -->|Static| S3
+    S3 --> CF
+    classDef highlight fill:#f9f,stroke:#333,stroke-width:2px;
+    ES:::highlight
+    class ES highlight;
+```
+
 ### AWS Services Used
 
 - **ECS Fargate**: Container orchestration
