@@ -101,6 +101,72 @@ python scripts/generate_sample_data.py
 
 ### 6. Run the Application
 ```bash
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+## ☁️ AWS Deployment
+
+For production deployment on AWS with CloudFront, ECS, and other AWS services:
+
+### Prerequisites for AWS Deployment
+
+- AWS CLI installed and configured
+- Docker installed
+- AWS Account with appropriate permissions
+- Elastic Cloud instance (already configured)
+
+### Quick AWS Deployment
+
+1. **Set Environment Variables:**
+```bash
+export ELASTICSEARCH_HOST="https://your-elastic-cloud-instance.es.us-east-1.aws.elastic.cloud"
+export ELASTICSEARCH_USERNAME="your-base64-encoded-api-key"
+export AWS_DEFAULT_REGION="us-east-1"
+```
+
+2. **Run Deployment Script:**
+```bash
+./aws/deploy.sh production us-east-1
+```
+
+3. **Access Your Application:**
+- Load Balancer URL: `http://your-alb-dns-name`
+- CloudFront URL: `https://your-cloudfront-domain.cloudfront.net`
+
+### AWS Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   CloudFront    │    │   Application   │    │   ECS Fargate   │
+│   Distribution  │───▶│   Load Balancer │───▶│   Containers    │
+│   (CDN)         │    │   (ALB)         │    │   (FastAPI)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   S3 Bucket     │    │   VPC +         │    │   Elastic Cloud │
+│   (Static Assets)│   │   Security      │    │   (Serverless)  │
+│                 │   │   Groups        │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### AWS Services Used
+
+- **ECS Fargate**: Container orchestration
+- **Application Load Balancer**: Traffic distribution
+- **CloudFront**: CDN and HTTPS termination
+- **S3**: Static asset storage
+- **Secrets Manager**: Secure credential storage
+- **CloudWatch**: Logging and monitoring
+- **VPC**: Network isolation
+
+### Estimated Monthly Cost: $60-90
+
+For detailed AWS deployment instructions, see [aws/README.md](aws/README.md).
+
+### 6. Run the Application
+```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
