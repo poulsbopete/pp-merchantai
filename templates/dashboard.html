@@ -444,12 +444,19 @@ async function loadMerchantForAI(merchantName) {
         `;
         
         // Insert the message at the top of the troubleshooting section
-        const troubleshootSection = document.querySelector('#troubleshootResult').closest('.card');
-        const cardBody = troubleshootSection.querySelector('.card-body');
-        cardBody.insertAdjacentHTML('afterbegin', successMessage);
+        const troubleshootSection = document.querySelector('#troubleshootResult');
+        if (troubleshootSection) {
+            const cardBody = troubleshootSection.closest('.card').querySelector('.card-body');
+            cardBody.insertAdjacentHTML('afterbegin', successMessage);
+        } else {
+            // Fallback: just show an alert
+            alert(`✅ ${merchantName} loaded into AI workflow! Click "Troubleshoot" or "AI Insights" to analyze.`);
+        }
         
         // Scroll to the troubleshooting section
-        troubleshootCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (troubleshootSection) {
+            troubleshootSection.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         
         // Highlight the search box
         const searchBox = document.getElementById('merchantSearch');
