@@ -295,8 +295,24 @@ class ElasticClient:
                 conversion_rate = bucket["avg_conversion_rate"]["value"]
                 transactions = bucket["total_transactions"]["value"]
                 
+                # Get merchant name by searching for the merchant
+                merchant_name = "Unknown"
+                try:
+                    merchant_search = self.client.search(
+                        index=self.index,
+                        body={
+                            "query": {"term": {"merchant_id": merchant_id}},
+                            "size": 1
+                        }
+                    )
+                    if merchant_search["hits"]["hits"]:
+                        merchant_name = merchant_search["hits"]["hits"][0]["_source"].get("merchant_name", "Unknown")
+                except Exception as e:
+                    logger.warning(f"Failed to get merchant name for {merchant_id}: {e}")
+                
                 issues.append({
                     "merchant_id": merchant_id,
+                    "merchant_name": merchant_name,
                     "error_rate": error_rate,
                     "conversion_rate": conversion_rate,
                     "transaction_count": transactions,
