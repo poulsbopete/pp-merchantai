@@ -92,9 +92,40 @@ def create_index(client):
 
 def generate_merchant_data(merchant_id, merchant_name, base_date):
     """Generate sample data for a merchant"""
+    # Create some merchants with specific issues for testing
+    merchant_index = int(merchant_id.split('_')[1]) - 1
+    
+    # Define merchants with specific issues
+    problematic_merchants = {
+        0: {"type": "conversion_rate", "rate": 0.15},  # TechCorp Solutions - low conversion
+        1: {"type": "error_rate", "rate": 0.25},       # Global Retail Inc - high error rate
+        2: {"type": "both", "conversion": 0.12, "error": 0.18},  # Digital Marketplace - both issues
+        3: {"type": "conversion_rate", "rate": 0.18},  # E-Commerce Pro - low conversion
+        4: {"type": "error_rate", "rate": 0.22},       # Online Store Plus - high error rate
+        5: {"type": "conversion_rate", "rate": 0.22},  # WebShop Express - low conversion
+        6: {"type": "error_rate", "rate": 0.19},       # Digital Goods Co - high error rate
+        7: {"type": "both", "conversion": 0.14, "error": 0.16},  # Tech Retail Hub - both issues
+        8: {"type": "conversion_rate", "rate": 0.16},  # E-Business Solutions - low conversion
+        9: {"type": "error_rate", "rate": 0.21},       # Digital Commerce Pro - high error rate
+    }
+    
     # Base performance metrics
-    base_conversion_rate = random.uniform(0.3, 0.8)
-    base_error_rate = random.uniform(0.01, 0.15)
+    if merchant_index in problematic_merchants:
+        issue = problematic_merchants[merchant_index]
+        if issue["type"] == "conversion_rate":
+            base_conversion_rate = issue["rate"]
+            base_error_rate = random.uniform(0.01, 0.08)
+        elif issue["type"] == "error_rate":
+            base_conversion_rate = random.uniform(0.4, 0.7)
+            base_error_rate = issue["rate"]
+        elif issue["type"] == "both":
+            base_conversion_rate = issue["conversion"]
+            base_error_rate = issue["error"]
+    else:
+        # Normal merchants with good performance
+        base_conversion_rate = random.uniform(0.3, 0.8)
+        base_error_rate = random.uniform(0.01, 0.15)
+    
     base_transactions = random.randint(100, 5000)
     
     # Generate data for the last 3 months
@@ -120,13 +151,16 @@ def generate_merchant_data(merchant_id, merchant_name, base_date):
             country = random.choice(COUNTRIES)
             city = random.choice(CITIES)
         
-        # Randomly add some conversion rate issues
-        if random.random() < 0.05:  # 5% chance of low conversion rate
-            conversion_rate = random.uniform(0.05, 0.25)
-        
-        # Randomly add some error rate issues
-        if random.random() < 0.03:  # 3% chance of high error rate
-            error_rate = random.uniform(0.15, 0.4)
+        # For problematic merchants, ensure they maintain their issues
+        if merchant_index in problematic_merchants:
+            issue = problematic_merchants[merchant_index]
+            if issue["type"] == "conversion_rate":
+                conversion_rate = max(0.05, min(0.3, conversion_rate))  # Keep conversion rate low
+            elif issue["type"] == "error_rate":
+                error_rate = max(0.15, min(0.4, error_rate))  # Keep error rate high
+            elif issue["type"] == "both":
+                conversion_rate = max(0.05, min(0.25, conversion_rate))  # Keep conversion rate low
+                error_rate = max(0.15, min(0.3, error_rate))  # Keep error rate high
         
         data_point = {
             "merchant_id": merchant_id,
