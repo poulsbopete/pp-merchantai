@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import logging
 from datetime import datetime
@@ -22,9 +23,21 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title=settings.app_title,
-    version=settings.app_version,
-    description="PayPal Merchant Troubleshooting Application"
+    title="PayPal Merchant AI - Troubleshooting Dashboard",
+    version="1.0.0",
+    description="AI-powered merchant troubleshooting application for PayPal",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize services
@@ -50,6 +63,46 @@ async def dashboard(request: Request):
             "error": "Failed to load dashboard"
         })
 
+@app.get("/docs", response_class=RedirectResponse)
+async def redirect_docs():
+    """Redirect /docs to /api/docs"""
+    return RedirectResponse(url="/api/docs")
+
+@app.get("/api/docs", response_class=HTMLResponse)
+async def api_docs():
+    """API documentation page"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>API Documentation - PayPal Merchant AI</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+        <script>
+            window.onload = function() {
+                const ui = SwaggerUIBundle({
+                    url: '/api/openapi.json',
+                    dom_id: '#swagger-ui',
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIBundle.SwaggerUIStandalonePreset
+                    ],
+                    layout: "BaseLayout",
+                    deepLinking: true,
+                    showExtensions: true,
+                    showCommonExtensions: true
+                });
+            };
+        </script>
+    </body>
+    </html>
+    """
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
@@ -58,7 +111,7 @@ async def health_check():
         return {
             "status": "healthy" if elastic_health else "unhealthy",
             "elasticsearch": "connected" if elastic_health else "disconnected",
-            "version": settings.app_version
+            "version": "1.0.0"
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")

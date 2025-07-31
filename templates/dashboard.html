@@ -5,10 +5,15 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <h1 class="h3 mb-0">
-            <i class="fas fa-tachometer-alt me-2"></i>Merchant Troubleshooting Dashboard
-        </h1>
-        <p class="text-muted">Monitor and analyze PayPal merchant performance issues</p>
+        <div class="d-flex align-items-center">
+            <img src="https://www.paypalobjects.com/webstatic/icon/pp258.png" alt="PayPal" style="height: 40px; margin-right: 15px;">
+            <div>
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-tachometer-alt me-2"></i>Merchant Troubleshooting Dashboard
+                </h1>
+                <p class="text-muted">Monitor and analyze PayPal merchant performance issues</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -224,663 +229,663 @@
 
 {% block scripts %}
 <script>
-// Initialize charts when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initializeCharts();
-    loadConversionIssues();
-    loadErrorRateIssues();
-    loadLocationIssues();
-});
-
-function initializeCharts() {
-    // Issue Distribution Chart
-    const issueCtx = document.getElementById('issueChart').getContext('2d');
-    new Chart(issueCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Conversion Rate', 'Location Issues', 'Error Rate'],
-            datasets: [{
-                data: [
-                    {{ summary.issue_distribution.conversion_rate }},
-                    {{ summary.issue_distribution.missing_location }},
-                    {{ summary.issue_distribution.high_error_rate }}
-                ],
-                backgroundColor: ['#dc3545', '#ffc107', '#fd7e14'],
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-
-    // Risk Levels Chart
-    const riskCtx = document.getElementById('riskChart').getContext('2d');
-    new Chart(riskCtx, {
-        type: 'bar',
-        data: {
-            labels: ['High', 'Medium', 'Low'],
-            datasets: [{
-                label: 'Issues by Risk Level',
-                data: [
-                    {{ summary.risk_levels.high }},
-                    {{ summary.risk_levels.medium }},
-                    {{ summary.risk_levels.low }}
-                ],
-                backgroundColor: ['#dc3545', '#ffc107', '#28a745'],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
-}
-
-async function loadConversionIssues() {
-    try {
-        showLoading('conversionIssuesTable');
-        const response = await fetch('/api/analytics/conversion-rates');
-        const issues = await response.json();
-        
-        if (issues.length === 0) {
-            document.getElementById('conversionIssuesTable').innerHTML = 
-                '<div class="text-center text-muted">No conversion rate issues found</div>';
-            return;
-        }
-        
-        const table = `
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Merchant</th>
-                            <th>Rate</th>
-                            <th>Change</th>
-                            <th>Severity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${issues.slice(0, 5).map(issue => `
-                            <tr>
-                                <td>
-                                    <a href="#" class="text-primary fw-bold clickable-merchant" 
-                                       onclick="loadMerchantForAI('${issue.merchant_name}')" 
-                                       title="Click to load ${issue.merchant_name} into AI workflow">
-                                        ${issue.merchant_name}
-                                        <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
-                                    </a>
-                                </td>
-                                <td>${formatPercentage(issue.current_rate)}</td>
-                                <td class="${issue.change_percentage < 0 ? 'text-danger' : 'text-success'}">
-                                    ${issue.change_percentage > 0 ? '+' : ''}${issue.change_percentage.toFixed(1)}%
-                                </td>
-                                <td><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
-        `;
-        
-        document.getElementById('conversionIssuesTable').innerHTML = table;
-    } catch (error) {
-        showError('conversionIssuesTable', 'Failed to load conversion rate issues');
-    }
-}
-
-async function loadLocationIssues() {
-    try {
-        showLoading('locationIssuesTable');
-        const response = await fetch('/api/analytics/location-issues');
-        const issues = await response.json();
-        
-        if (issues.length === 0) {
-            document.getElementById('locationIssuesTable').innerHTML = 
-                '<div class="text-center text-muted">No location issues found</div>';
-            return;
-        }
-        
-        const table = `
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Merchant</th>
-                            <th>Missing</th>
-                            <th>Impact</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${issues.slice(0, 5).map(issue => `
-                            <tr>
-                                <td>
-                                    <a href="#" class="text-primary fw-bold clickable-merchant" 
-                                       onclick="loadMerchantForAI('${issue.merchant_name}')" 
-                                       title="Click to load ${issue.merchant_name} into AI workflow">
-                                        ${issue.merchant_name}
-                                        <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
-                                    </a>
-                                </td>
-                                <td>${issue.missing_fields.join(', ')}</td>
-                                <td><span class="badge ${getSeverityClass(issue.impact_level)}">${issue.impact_level}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
-        `;
-        
-        document.getElementById('locationIssuesTable').innerHTML = table;
-    } catch (error) {
-        showError('locationIssuesTable', 'Failed to load location issues');
-    }
-}
-
-async function loadErrorRateIssues() {
-    try {
-        showLoading('errorRateIssuesTable');
-        const response = await fetch('/api/analytics/error-rates');
-        const result = await response.json();
-        const issues = result.data || [];
-        
-        if (issues.length === 0) {
-            document.getElementById('errorRateIssuesTable').innerHTML = 
-                '<div class="text-center text-muted">No error rate issues found</div>';
-            return;
-        }
-        
-        const table = `
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Merchant</th>
-                            <th>Rate</th>
-                            <th>Severity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${issues.slice(0, 5).map(issue => `
-                            <tr>
-                                <td>
-                                    <a href="#" class="text-primary fw-bold clickable-merchant" 
-                                       onclick="loadMerchantForAI('${issue.merchant_name}')" 
-                                       title="Click to load ${issue.merchant_name} into AI workflow">
-                                        ${issue.merchant_name}
-                                        <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
-                                    </a>
-                                </td>
-                                <td>${formatPercentage(issue.error_rate)}</td>
-                                <td><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
-        `;
-        
-        document.getElementById('errorRateIssuesTable').innerHTML = table;
-    } catch (error) {
-        showError('errorRateIssuesTable', 'Failed to load error rate issues');
-    }
-}
-
-async function loadMonthlyComparison() {
-    try {
-        const response = await fetch('/api/analytics/monthly-comparison');
-        const data = await response.json();
-        
-        // Show results in a modal or update a section
-        alert(`Loaded monthly comparison data for ${data.length} merchants`);
-    } catch (error) {
-        alert('Failed to load monthly comparison');
-    }
-}
-
-async function searchMerchants(query) {
-    if (query.length < 2) {
-        document.getElementById('merchantSearchResults').style.display = 'none';
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/search/merchants?q=${encodeURIComponent(query)}`);
-        const data = await response.json();
-        
-        const resultsDiv = document.getElementById('merchantSearchResults');
-        if (data.results.length > 0) {
-            resultsDiv.innerHTML = data.results.map(merchant => `
-                <a href="#" class="list-group-item list-group-item-action" onclick="selectMerchant('${merchant.merchant_id}', '${merchant.merchant_name}')">
-                    <strong>${merchant.merchant_name}</strong> (${merchant.merchant_id})
-                </a>
-            `).join('');
-            resultsDiv.style.display = 'block';
-        } else {
-            resultsDiv.style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Search failed:', error);
-    }
-}
-
-function selectMerchant(merchantId, merchantName) {
-    document.getElementById('merchantSearch').value = merchantId;
-    document.getElementById('merchantSearchResults').style.display = 'none';
-}
-
-async function loadMerchantForAI(merchantName) {
-    try {
-        // First, search for the merchant to get its ID
-        const searchResponse = await fetch(`/api/search/merchants?q=${encodeURIComponent(merchantName)}`);
-        const searchData = await searchResponse.json();
-        
-        if (searchData.results.length === 0) {
-            alert(`Merchant not found: ${merchantName}`);
-            return;
-        }
-        
-        const merchant = searchData.results[0];
-        
-        // Set the merchant in the search box
-        document.getElementById('merchantSearch').value = merchant.merchant_id;
-        
-        // Show a success message
-        const successMessage = `
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-robot me-2"></i>
-                <strong>${merchantName}</strong> loaded into AI workflow! 
-                <br>Click "Troubleshoot" or "AI Insights" to analyze this merchant.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-        
-        // Insert the message at the top of the troubleshooting section
-        const troubleshootSection = document.querySelector('#troubleshootResult');
-        if (troubleshootSection) {
-            const cardBody = troubleshootSection.closest('.card').querySelector('.card-body');
-            cardBody.insertAdjacentHTML('afterbegin', successMessage);
-        } else {
-            // Fallback: just show an alert
-            alert(`✅ ${merchantName} loaded into AI workflow! Click "Troubleshoot" or "AI Insights" to analyze.`);
-        }
-        
-        // Scroll to the troubleshooting section
-        if (troubleshootSection) {
-            troubleshootSection.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        
-        // Highlight the search box
-        const searchBox = document.getElementById('merchantSearch');
-        searchBox.style.borderColor = '#28a745';
-        searchBox.style.boxShadow = '0 0 0 0.2rem rgba(40, 167, 69, 0.25)';
-        setTimeout(() => {
-            searchBox.style.borderColor = '';
-            searchBox.style.boxShadow = '';
-        }, 3000);
-        
-    } catch (error) {
-        console.error('Failed to load merchant for AI:', error);
-        alert(`Failed to load ${merchantName} into AI workflow`);
-    }
-}
-
-async function troubleshootMerchant() {
-    const merchantId = document.getElementById('merchantSearch').value.trim();
-    if (!merchantId) {
-        alert('Please enter a merchant ID or search for a merchant name');
-        return;
-    }
-    
-    try {
-        showLoading('troubleshootResult');
-        const response = await fetch('/api/troubleshoot', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                merchant_id: merchantId,
-                include_recommendations: true
-            })
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadConversionIssues();
+            loadErrorRateIssues();
+            loadLocationIssues();
         });
-        
-        const result = await response.json();
-        
-        const resultHtml = `
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-magic me-2"></i>Troubleshooting Results for ${merchantId}
-                    <span class="badge ${getSeverityClass(result.risk_score > 0.7 ? 'high' : result.risk_score > 0.4 ? 'medium' : 'low')} ms-2">
-                        Risk Score: ${(result.risk_score * 100).toFixed(0)}%
-                    </span>
-                </div>
-                <div class="card-body">
-                    ${result.issues_found.length > 0 ? `
-                        <h6>Issues Found:</h6>
-                        <ul>
-                            ${result.issues_found.map(issue => `
-                                <li><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span> ${issue.type}: ${issue.details}</li>
-                            `).join('')}
-                        </ul>
-                    ` : '<p class="text-success">No issues found for this merchant.</p>'}
-                    
-                    ${result.recommendations.length > 0 ? `
-                        <h6>Recommendations:</h6>
-                        <ul>
-                            ${result.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                    
-                    ${result.next_steps.length > 0 ? `
-                        <h6>Next Steps:</h6>
-                        <ul>
-                            ${result.next_steps.map(step => `<li>${step}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('troubleshootResult').innerHTML = resultHtml;
-    } catch (error) {
-        showError('troubleshootResult', 'Failed to troubleshoot merchant');
-    }
-}
 
-// AI Agent Functions
-async function resolveLocationsWithAI() {
-    try {
-        showLoading('aiResults');
-        const response = await fetch('/api/ai/resolve-locations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const resolutions = await response.json();
-        
-        if (resolutions.length === 0) {
-            document.getElementById('aiResults').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>No location issues found to resolve.
-                </div>
-            `;
-            return;
+        function initializeCharts() {
+            // Issue Distribution Chart
+            const issueCtx = document.getElementById('issueChart').getContext('2d');
+            new Chart(issueCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Conversion Rate', 'Location Issues', 'Error Rate'],
+                    datasets: [{
+                        data: [
+                            {{ summary.issue_distribution.conversion_rate }},
+                            {{ summary.issue_distribution.missing_location }},
+                            {{ summary.issue_distribution.high_error_rate }}
+                        ],
+                        backgroundColor: ['#dc3545', '#ffc107', '#fd7e14'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Risk Levels Chart
+            const riskCtx = document.getElementById('riskChart').getContext('2d');
+            new Chart(riskCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['High', 'Medium', 'Low'],
+                    datasets: [{
+                        label: 'Issues by Risk Level',
+                        data: [
+                            {{ summary.risk_levels.high }},
+                            {{ summary.risk_levels.medium }},
+                            {{ summary.risk_levels.low }}
+                        ],
+                        backgroundColor: ['#dc3545', '#ffc107', '#28a745'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
         }
-        
-        const resultsHtml = `
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-robot me-2"></i>AI Location Resolution Results
-                    <span class="badge bg-success ms-2">${resolutions.length} resolved</span>
-                </div>
-                <div class="card-body">
+
+        async function loadConversionIssues() {
+            try {
+                showLoading('conversionIssuesTable');
+                const response = await fetch('/api/analytics/conversion-rates');
+                const issues = await response.json();
+                
+                if (issues.length === 0) {
+                    document.getElementById('conversionIssuesTable').innerHTML = 
+                        '<div class="text-center text-muted">No conversion rate issues found</div>';
+                    return;
+                }
+                
+                const table = `
                     <div class="table-responsive">
                         <table class="table table-sm">
                             <thead>
                                 <tr>
                                     <th>Merchant</th>
-                                    <th>Original Location</th>
-                                    <th>Resolved Location</th>
-                                    <th>Confidence</th>
-                                    <th>Method</th>
+                                    <th>Rate</th>
+                                    <th>Change</th>
+                                    <th>Severity</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${resolutions.map(resolution => `
+                                ${issues.slice(0, 5).map(issue => `
                                     <tr>
-                                        <td>${resolution.merchant_name}</td>
-                                        <td>${resolution.original_location.city || 'Missing'}, ${resolution.original_location.country || 'Missing'}</td>
-                                        <td>${resolution.resolved_location.city}, ${resolution.resolved_location.country}</td>
-                                        <td><span class="badge bg-${resolution.confidence_score > 0.8 ? 'success' : 'warning'}">${(resolution.confidence_score * 100).toFixed(0)}%</span></td>
-                                        <td><span class="badge bg-info">${resolution.resolution_method}</span></td>
+                                        <td>
+                                            <a href="#" class="text-primary fw-bold clickable-merchant" 
+                                               onclick="loadMerchantForAI('${issue.merchant_name}')" 
+                                               title="Click to load ${issue.merchant_name} into AI workflow">
+                                                ${issue.merchant_name}
+                                                <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
+                                            </a>
+                                        </td>
+                                        <td>${formatPercentage(issue.current_rate)}</td>
+                                        <td class="${issue.change_percentage < 0 ? 'text-danger' : 'text-success'}">
+                                            ${issue.change_percentage > 0 ? '+' : ''}${issue.change_percentage.toFixed(1)}%
+                                        </td>
+                                        <td><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span></td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('aiResults').innerHTML = resultsHtml;
-    } catch (error) {
-        showError('aiResults', 'Failed to resolve locations with AI');
-    }
-}
+                    ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
+                `;
+                
+                document.getElementById('conversionIssuesTable').innerHTML = table;
+            } catch (error) {
+                showError('conversionIssuesTable', 'Failed to load conversion rate issues');
+            }
+        }
 
-async function checkAIStatus() {
-    try {
-        const response = await fetch('/api/ai/status');
-        const status = await response.json();
-        
-        const statusHtml = `
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-brain me-2"></i>AI Agent Status
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Status:</strong> 
-                                <span class="badge bg-${status.available ? 'success' : 'danger'}">
-                                    ${status.available ? 'Available' : 'Unavailable'}
-                                </span>
-                            </p>
-                            ${status.available ? `
-                                <p><strong>Provider:</strong> ${status.provider}</p>
-                                <p><strong>Model:</strong> ${status.model}</p>
-                            ` : '<p class="text-muted">No API key configured</p>'}
+        async function loadLocationIssues() {
+            try {
+                showLoading('locationIssuesTable');
+                const response = await fetch('/api/analytics/location-issues');
+                const issues = await response.json();
+                
+                if (issues.length === 0) {
+                    document.getElementById('locationIssuesTable').innerHTML = 
+                        '<div class="text-center text-muted">No location issues found</div>';
+                    return;
+                }
+                
+                const table = `
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Merchant</th>
+                                    <th>Missing</th>
+                                    <th>Impact</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${issues.slice(0, 5).map(issue => `
+                                    <tr>
+                                        <td>
+                                            <a href="#" class="text-primary fw-bold clickable-merchant" 
+                                               onclick="loadMerchantForAI('${issue.merchant_name}')" 
+                                               title="Click to load ${issue.merchant_name} into AI workflow">
+                                                ${issue.merchant_name}
+                                                <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
+                                            </a>
+                                        </td>
+                                        <td>${issue.missing_fields.join(', ')}</td>
+                                        <td><span class="badge ${getSeverityClass(issue.impact_level)}">${issue.impact_level}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
+                `;
+                
+                document.getElementById('locationIssuesTable').innerHTML = table;
+            } catch (error) {
+                showError('locationIssuesTable', 'Failed to load location issues');
+            }
+        }
+
+        async function loadErrorRateIssues() {
+            try {
+                showLoading('errorRateIssuesTable');
+                const response = await fetch('/api/analytics/error-rates');
+                const result = await response.json();
+                const issues = result.data || [];
+                
+                if (issues.length === 0) {
+                    document.getElementById('errorRateIssuesTable').innerHTML = 
+                        '<div class="text-center text-muted">No error rate issues found</div>';
+                    return;
+                }
+                
+                const table = `
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Merchant</th>
+                                    <th>Rate</th>
+                                    <th>Severity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${issues.slice(0, 5).map(issue => `
+                                    <tr>
+                                        <td>
+                                            <a href="#" class="text-primary fw-bold clickable-merchant" 
+                                               onclick="loadMerchantForAI('${issue.merchant_name}')" 
+                                               title="Click to load ${issue.merchant_name} into AI workflow">
+                                                ${issue.merchant_name}
+                                                <i class="fas fa-robot ms-1 text-info" style="font-size: 0.8em;"></i>
+                                            </a>
+                                        </td>
+                                        <td>${formatPercentage(issue.error_rate)}</td>
+                                        <td><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${issues.length > 5 ? `<div class="text-center"><small class="text-muted">Showing 5 of ${issues.length} issues</small></div>` : ''}
+                `;
+                
+                document.getElementById('errorRateIssuesTable').innerHTML = table;
+            } catch (error) {
+                showError('errorRateIssuesTable', 'Failed to load error rate issues');
+            }
+        }
+
+        async function loadMonthlyComparison() {
+            try {
+                const response = await fetch('/api/analytics/monthly-comparison');
+                const data = await response.json();
+                
+                // Show results in a modal or update a section
+                alert(`Loaded monthly comparison data for ${data.length} merchants`);
+            } catch (error) {
+                alert('Failed to load monthly comparison');
+            }
+        }
+
+        async function searchMerchants(query) {
+            if (query.length < 2) {
+                document.getElementById('merchantSearchResults').style.display = 'none';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/search/merchants?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                const resultsDiv = document.getElementById('merchantSearchResults');
+                if (data.results.length > 0) {
+                    resultsDiv.innerHTML = data.results.map(merchant => `
+                        <a href="#" class="list-group-item list-group-item-action" onclick="selectMerchant('${merchant.merchant_id}', '${merchant.merchant_name}')">
+                            <strong>${merchant.merchant_name}</strong> (${merchant.merchant_id})
+                        </a>
+                    `).join('');
+                    resultsDiv.style.display = 'block';
+                } else {
+                    resultsDiv.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Search failed:', error);
+            }
+        }
+
+        function selectMerchant(merchantId, merchantName) {
+            document.getElementById('merchantSearch').value = merchantId;
+            document.getElementById('merchantSearchResults').style.display = 'none';
+        }
+
+        async function loadMerchantForAI(merchantName) {
+            try {
+                // First, search for the merchant to get its ID
+                const searchResponse = await fetch(`/api/search/merchants?q=${encodeURIComponent(merchantName)}`);
+                const searchData = await searchResponse.json();
+                
+                if (searchData.results.length === 0) {
+                    alert(`Merchant not found: ${merchantName}`);
+                    return;
+                }
+                
+                const merchant = searchData.results[0];
+                
+                // Set the merchant in the search box
+                document.getElementById('merchantSearch').value = merchant.merchant_id;
+                
+                // Show a success message
+                const successMessage = `
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-robot me-2"></i>
+                        <strong>${merchantName}</strong> loaded into AI workflow! 
+                        <br>Click "Troubleshoot" or "AI Insights" to analyze this merchant.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                
+                // Insert the message at the top of the troubleshooting section
+                const troubleshootSection = document.querySelector('#troubleshootResult');
+                if (troubleshootSection) {
+                    const cardBody = troubleshootSection.closest('.card').querySelector('.card-body');
+                    cardBody.insertAdjacentHTML('afterbegin', successMessage);
+                } else {
+                    // Fallback: just show an alert
+                    alert(`✅ ${merchantName} loaded into AI workflow! Click "Troubleshoot" or "AI Insights" to analyze.`);
+                }
+                
+                // Scroll to the troubleshooting section
+                if (troubleshootSection) {
+                    troubleshootSection.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                // Highlight the search box
+                const searchBox = document.getElementById('merchantSearch');
+                searchBox.style.borderColor = '#28a745';
+                searchBox.style.boxShadow = '0 0 0 0.2rem rgba(40, 167, 69, 0.25)';
+                setTimeout(() => {
+                    searchBox.style.borderColor = '';
+                    searchBox.style.boxShadow = '';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Failed to load merchant for AI:', error);
+                alert(`Failed to load ${merchantName} into AI workflow`);
+            }
+        }
+
+        async function troubleshootMerchant() {
+            const merchantId = document.getElementById('merchantSearch').value.trim();
+            if (!merchantId) {
+                alert('Please enter a merchant ID or search for a merchant name');
+                return;
+            }
+            
+            try {
+                showLoading('troubleshootResult');
+                const response = await fetch('/api/troubleshoot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        include_recommendations: true
+                    })
+                });
+                
+                const result = await response.json();
+                
+                const resultHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-magic me-2"></i>Troubleshooting Results for ${merchantId}
+                            <span class="badge ${getSeverityClass(result.risk_score > 0.7 ? 'high' : result.risk_score > 0.4 ? 'medium' : 'low')} ms-2">
+                                Risk Score: ${(result.risk_score * 100).toFixed(0)}%
+                            </span>
                         </div>
-                        <div class="col-md-6">
-                            <h6>Capabilities:</h6>
-                            <ul>
-                                ${status.capabilities.map(cap => `<li><i class="fas fa-check text-success me-2"></i>${cap.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>`).join('')}
-                            </ul>
+                        <div class="card-body">
+                            ${result.issues_found.length > 0 ? `
+                                <h6>Issues Found:</h6>
+                                <ul>
+                                    ${result.issues_found.map(issue => `
+                                        <li><span class="badge ${getSeverityClass(issue.severity)}">${issue.severity}</span> ${issue.type}: ${issue.details}</li>
+                                    `).join('')}
+                                </ul>
+                            ` : '<p class="text-success">No issues found for this merchant.</p>'}
+                            
+                            ${result.recommendations.length > 0 ? `
+                                <h6>Recommendations:</h6>
+                                <ul>
+                                    ${result.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                            
+                            ${result.next_steps.length > 0 ? `
+                                <h6>Next Steps:</h6>
+                                <ul>
+                                    ${result.next_steps.map(step => `<li>${step}</li>`).join('')}
+                                </ul>
+                            ` : ''}
                         </div>
                     </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('aiResults').innerHTML = statusHtml;
-    } catch (error) {
-        showError('aiResults', 'Failed to check AI status');
-    }
-}
-
-async function resolveConversionRatesWithAI() {
-    try {
-        showLoading('aiResults');
-        const response = await fetch('/api/ai/resolve-conversion-rates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+                `;
+                
+                document.getElementById('troubleshootResult').innerHTML = resultHtml;
+            } catch (error) {
+                showError('troubleshootResult', 'Failed to troubleshoot merchant');
             }
-        });
-        
-        const recommendations = await response.json();
-        
-        if (recommendations.length === 0) {
-            document.getElementById('aiResults').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>No conversion rate issues found to analyze.
-                </div>
-            `;
-            return;
         }
-        
-        const resultsHtml = `
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-chart-line me-2"></i>AI Conversion Rate Analysis
-                    <span class="badge bg-primary ms-2">${recommendations.length} analyzed</span>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Merchant</th>
-                                    <th>Current Rate</th>
-                                    <th>Severity</th>
-                                    <th>AI Recommendation</th>
-                                    <th>Confidence</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${recommendations.map(rec => `
-                                    <tr>
-                                        <td><strong>${rec.merchant_name}</strong></td>
-                                        <td><span class="badge bg-${rec.current_conversion_rate < 0.3 ? 'danger' : 'warning'}">${(rec.current_conversion_rate * 100).toFixed(1)}%</span></td>
-                                        <td><span class="badge bg-${rec.issue_severity === 'high' ? 'danger' : 'warning'}">${rec.issue_severity}</span></td>
-                                        <td><small>${rec.ai_recommendation}</small></td>
-                                        <td><span class="badge bg-success">${(rec.confidence_score * 100).toFixed(0)}%</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('aiResults').innerHTML = resultsHtml;
-    } catch (error) {
-        showError('aiResults', 'Failed to analyze conversion rates with AI');
-    }
-}
 
-async function resolveErrorRatesWithAI() {
-    try {
-        showLoading('aiResults');
-        const response = await fetch('/api/ai/resolve-error-rates', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+        // AI Agent Functions
+        async function resolveLocationsWithAI() {
+            try {
+                showLoading('aiResults');
+                const response = await fetch('/api/ai/resolve-locations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const resolutions = await response.json();
+                
+                if (resolutions.length === 0) {
+                    document.getElementById('aiResults').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>No location issues found to resolve.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const resultsHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-robot me-2"></i>AI Location Resolution Results
+                            <span class="badge bg-success ms-2">${resolutions.length} resolved</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Merchant</th>
+                                            <th>Original Location</th>
+                                            <th>Resolved Location</th>
+                                            <th>Confidence</th>
+                                            <th>Method</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${resolutions.map(resolution => `
+                                            <tr>
+                                                <td>${resolution.merchant_name}</td>
+                                                <td>${resolution.original_location.city || 'Missing'}, ${resolution.original_location.country || 'Missing'}</td>
+                                                <td>${resolution.resolved_location.city}, ${resolution.resolved_location.country}</td>
+                                                <td><span class="badge bg-${resolution.confidence_score > 0.8 ? 'success' : 'warning'}">${(resolution.confidence_score * 100).toFixed(0)}%</span></td>
+                                                <td><span class="badge bg-info">${resolution.resolution_method}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('aiResults').innerHTML = resultsHtml;
+            } catch (error) {
+                showError('aiResults', 'Failed to resolve locations with AI');
             }
-        });
-        
-        const recommendations = await response.json();
-        
-        if (recommendations.length === 0) {
-            document.getElementById('aiResults').innerHTML = `
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>No error rate issues found to analyze.
-                </div>
-            `;
-            return;
         }
-        
-        const resultsHtml = `
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-exclamation-triangle me-2"></i>AI Error Rate Analysis
-                    <span class="badge bg-danger ms-2">${recommendations.length} analyzed</span>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Merchant</th>
-                                    <th>Current Rate</th>
-                                    <th>Severity</th>
-                                    <th>AI Recommendation</th>
-                                    <th>Confidence</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${recommendations.map(rec => `
-                                    <tr>
-                                        <td><strong>${rec.merchant_name}</strong></td>
-                                        <td><span class="badge bg-${rec.current_error_rate > 0.1 ? 'danger' : 'warning'}">${(rec.current_error_rate * 100).toFixed(1)}%</span></td>
-                                        <td><span class="badge bg-${rec.issue_severity === 'high' ? 'danger' : 'warning'}">${rec.issue_severity}</span></td>
-                                        <td><small>${rec.ai_recommendation}</small></td>
-                                        <td><span class="badge bg-success">${(rec.confidence_score * 100).toFixed(0)}%</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('aiResults').innerHTML = resultsHtml;
-    } catch (error) {
-        showError('aiResults', 'Failed to analyze error rates with AI');
-    }
-}
 
-async function showAIInsights() {
-    const merchantName = prompt('Enter merchant name (e.g., "Global Retail Inc"):');
-    if (!merchantName) return;
-    
-    try {
-        showLoading('aiResults');
-        
-        // First search for the merchant
-        const searchResponse = await fetch(`/api/search/merchants?q=${encodeURIComponent(merchantName)}`);
-        const searchData = await searchResponse.json();
-        
-        if (searchData.results.length === 0) {
-            document.getElementById('aiResults').innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Merchant not found: ${merchantName}
-                </div>
-            `;
-            return;
+        async function checkAIStatus() {
+            try {
+                const response = await fetch('/api/ai/status');
+                const status = await response.json();
+                
+                const statusHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-brain me-2"></i>AI Agent Status
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Status:</strong> 
+                                        <span class="badge bg-${status.available ? 'success' : 'danger'}">
+                                            ${status.available ? 'Available' : 'Unavailable'}
+                                        </span>
+                                    </p>
+                                    ${status.available ? `
+                                        <p><strong>Provider:</strong> ${status.provider}</p>
+                                        <p><strong>Model:</strong> ${status.model}</p>
+                                    ` : '<p class="text-muted">No API key configured</p>'}
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Capabilities:</h6>
+                                    <ul>
+                                        ${status.capabilities.map(cap => `<li><i class="fas fa-check text-success me-2"></i>${cap.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('aiResults').innerHTML = statusHtml;
+            } catch (error) {
+                showError('aiResults', 'Failed to check AI status');
+            }
         }
-        
-        const merchant = searchData.results[0];
-        const response = await fetch(`/api/ai/insights/${merchant.merchant_id}`);
-        const data = await response.json();
-        
-        const insightsHtml = `
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-lightbulb me-2"></i>AI Insights for ${merchant.merchant_name}
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-robot me-2"></i>AI-Generated Recommendations
+
+        async function resolveConversionRatesWithAI() {
+            try {
+                showLoading('aiResults');
+                const response = await fetch('/api/ai/resolve-conversion-rates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const recommendations = await response.json();
+                
+                if (recommendations.length === 0) {
+                    document.getElementById('aiResults').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>No conversion rate issues found to analyze.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const resultsHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-line me-2"></i>AI Conversion Rate Analysis
+                            <span class="badge bg-primary ms-2">${recommendations.length} analyzed</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Merchant</th>
+                                            <th>Current Rate</th>
+                                            <th>Severity</th>
+                                            <th>AI Recommendation</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${recommendations.map(rec => `
+                                            <tr>
+                                                <td><strong>${rec.merchant_name}</strong></td>
+                                                <td><span class="badge bg-${rec.current_conversion_rate < 0.3 ? 'danger' : 'warning'}">${(rec.current_conversion_rate * 100).toFixed(1)}%</span></td>
+                                                <td><span class="badge bg-${rec.issue_severity === 'high' ? 'danger' : 'warning'}">${rec.issue_severity}</span></td>
+                                                <td><small>${rec.ai_recommendation}</small></td>
+                                                <td><span class="badge bg-success">${(rec.confidence_score * 100).toFixed(0)}%</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                    <div class="insights-content">
-                        ${data.insights.split('\n').map(line => `<p>${line}</p>`).join('')}
+                `;
+                
+                document.getElementById('aiResults').innerHTML = resultsHtml;
+            } catch (error) {
+                showError('aiResults', 'Failed to analyze conversion rates with AI');
+            }
+        }
+
+        async function resolveErrorRatesWithAI() {
+            try {
+                showLoading('aiResults');
+                const response = await fetch('/api/ai/resolve-error-rates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const recommendations = await response.json();
+                
+                if (recommendations.length === 0) {
+                    document.getElementById('aiResults').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>No error rate issues found to analyze.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const resultsHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-exclamation-triangle me-2"></i>AI Error Rate Analysis
+                            <span class="badge bg-danger ms-2">${recommendations.length} analyzed</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Merchant</th>
+                                            <th>Current Rate</th>
+                                            <th>Severity</th>
+                                            <th>AI Recommendation</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${recommendations.map(rec => `
+                                            <tr>
+                                                <td><strong>${rec.merchant_name}</strong></td>
+                                                <td><span class="badge bg-${rec.current_error_rate > 0.1 ? 'danger' : 'warning'}">${(rec.current_error_rate * 100).toFixed(1)}%</span></td>
+                                                <td><span class="badge bg-${rec.issue_severity === 'high' ? 'danger' : 'warning'}">${rec.issue_severity}</span></td>
+                                                <td><small>${rec.ai_recommendation}</small></td>
+                                                <td><span class="badge bg-success">${(rec.confidence_score * 100).toFixed(0)}%</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                    <small class="text-muted">Generated at: ${new Date(data.timestamp).toLocaleString()}</small>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('aiResults').innerHTML = insightsHtml;
-    } catch (error) {
-        showError('aiResults', 'Failed to get AI insights');
-    }
-}
-</script>
+                `;
+                
+                document.getElementById('aiResults').innerHTML = resultsHtml;
+            } catch (error) {
+                showError('aiResults', 'Failed to analyze error rates with AI');
+            }
+        }
+
+        async function showAIInsights() {
+            const merchantName = prompt('Enter merchant name (e.g., "Global Retail Inc"):');
+            if (!merchantName) return;
+            
+            try {
+                showLoading('aiResults');
+                
+                // First search for the merchant
+                const searchResponse = await fetch(`/api/search/merchants?q=${encodeURIComponent(merchantName)}`);
+                const searchData = await searchResponse.json();
+                
+                if (searchData.results.length === 0) {
+                    document.getElementById('aiResults').innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Merchant not found: ${merchantName}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const merchant = searchData.results[0];
+                const response = await fetch(`/api/ai/insights/${merchant.merchant_id}`);
+                const data = await response.json();
+                
+                const insightsHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-lightbulb me-2"></i>AI Insights for ${merchant.merchant_name}
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-robot me-2"></i>AI-Generated Recommendations
+                            </div>
+                            <div class="insights-content">
+                                ${data.insights.split('\n').map(line => `<p>${line}</p>`).join('')}
+                            </div>
+                            <small class="text-muted">Generated at: ${new Date(data.timestamp).toLocaleString()}</small>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('aiResults').innerHTML = insightsHtml;
+            } catch (error) {
+                showError('aiResults', 'Failed to get AI insights');
+            }
+        }
+    </script>
 {% endblock %} 
