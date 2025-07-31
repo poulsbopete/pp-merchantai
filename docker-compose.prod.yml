@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.prod
+    # Note: This file works with both Docker and Podman
+    # For Podman: podman-compose up -d
+    # For Docker: docker-compose -f docker-compose.prod.yml up -d
     ports:
       - "8000:8000"
     environment:

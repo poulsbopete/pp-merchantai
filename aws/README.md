@@ -23,7 +23,7 @@ This guide will help you deploy the PayPal Merchant AI application to AWS using 
 ## 📋 Prerequisites
 
 1. **AWS CLI** installed and configured
-2. **Docker** installed
+2. **Docker or Podman** installed (Podman is preferred for rootless containers)
 3. **AWS Account** with appropriate permissions
 4. **Elastic Cloud** instance (already configured)
 
@@ -66,12 +66,15 @@ aws ecr create-repository --repository-name pp-merchantai --region us-east-1
 # Login to ECR
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
 
-# Build image
-docker build -f Dockerfile.prod -t pp-merchantai .
+# Build image (works with both Docker and Podman)
+podman build -f Dockerfile.prod -t pp-merchantai .
+# or: docker build -f Dockerfile.prod -t pp-merchantai .
 
 # Tag and push
-docker tag pp-merchantai:latest $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pp-merchantai:latest
-docker push $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pp-merchantai:latest
+podman tag pp-merchantai:latest $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pp-merchantai:latest
+podman push $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pp-merchantai:latest
+# or: docker tag pp-merchantai:latest $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pp-merchantai:latest
+#     docker push $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/pp-merchantai:latest
 ```
 
 ### 3. Create Secrets

@@ -111,7 +111,7 @@ For production deployment on AWS with CloudFront, ECS, and other AWS services:
 ### Prerequisites for AWS Deployment
 
 - AWS CLI installed and configured
-- Docker installed
+- Docker or Podman installed (Podman preferred for rootless containers)
 - AWS Account with appropriate permissions
 - Elastic Cloud instance (already configured)
 

@@ -22,6 +22,18 @@ if ! aws sts get-caller-identity > /dev/null 2>&1; then
     exit 1
 fi
 
+# Check if Podman is available, fallback to Docker
+if command -v podman &> /dev/null; then
+    CONTAINER_ENGINE="podman"
+    echo "🐳 Using Podman as container engine"
+elif command -v docker &> /dev/null; then
+    CONTAINER_ENGINE="docker"
+    echo "🐳 Using Docker as container engine"
+else
+    echo "❌ Neither Podman nor Docker found. Please install one of them."
+    exit 1
+fi
+
 # Create ECR repository if it doesn't exist
 echo "📦 Setting up ECR repository..."
 aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $REGION > /dev/null 2>&1 || {
@@ -31,13 +43,13 @@ aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $REGIO
 
 # Get ECR login token
 echo "🔐 Logging into ECR..."
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+aws ecr get-login-password --region $REGION | $CONTAINER_ENGINE login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 
-# Build and push Docker image
-echo "🐳 Building and pushing Docker image..."
-docker build -f Dockerfile.prod -t $ECR_REPOSITORY .
-docker tag $ECR_REPOSITORY:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$ECR_REPOSITORY:latest
-docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$ECR_REPOSITORY:latest
+# Build and push container image
+echo "🐳 Building and pushing container image..."
+$CONTAINER_ENGINE build -f Dockerfile.prod -t $ECR_REPOSITORY .
+$CONTAINER_ENGINE tag $ECR_REPOSITORY:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$ECR_REPOSITORY:latest
+$CONTAINER_ENGINE push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
 # Create secrets in AWS Secrets Manager
 echo "🔒 Setting up secrets..."
