@@ -454,13 +454,96 @@
 
         async function loadMonthlyComparison() {
             try {
+                showLoading('aiResults');
                 const response = await fetch('/api/analytics/monthly-comparison');
                 const data = await response.json();
                 
-                // Show results in a modal or update a section
-                alert(`Loaded monthly comparison data for ${data.length} merchants`);
+                if (data.length === 0) {
+                    document.getElementById('aiResults').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>No monthly comparison data available.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const resultsHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-calendar-alt me-2"></i>Monthly Comparison Analysis
+                            <span class="badge bg-info ms-2">${data.length} merchants</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Merchant</th>
+                                            <th>Current Month</th>
+                                            <th>Previous Month</th>
+                                            <th>Conversion Rate Change</th>
+                                            <th>Error Rate Change</th>
+                                            <th>Transaction Change</th>
+                                            <th>Trend</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.map(merchant => {
+                                            const convChange = merchant.changes.conversion_rate_change;
+                                            const errorChange = merchant.changes.error_rate_change;
+                                            const transChange = merchant.changes.transaction_change;
+                                            
+                                            return `
+                                                <tr>
+                                                    <td><strong>${merchant.merchant_name}</strong><br><small class="text-muted">${merchant.merchant_id}</small></td>
+                                                    <td>
+                                                        <small>
+                                                            Conv: ${(merchant.current_month.conversion_rate * 100).toFixed(1)}%<br>
+                                                            Error: ${(merchant.current_month.error_rate * 100).toFixed(1)}%<br>
+                                                            Trans: ${merchant.current_month.transactions.toLocaleString()}
+                                                        </small>
+                                                    </td>
+                                                    <td>
+                                                        <small>
+                                                            Conv: ${(merchant.previous_month.conversion_rate * 100).toFixed(1)}%<br>
+                                                            Error: ${(merchant.previous_month.error_rate * 100).toFixed(1)}%<br>
+                                                            Trans: ${merchant.previous_month.transactions.toLocaleString()}
+                                                        </small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-${convChange > 5 ? 'success' : convChange < -5 ? 'danger' : 'secondary'}">
+                                                            ${convChange > 0 ? '+' : ''}${convChange.toFixed(1)}%
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-${errorChange < 0 ? 'success' : errorChange > 0 ? 'danger' : 'secondary'}">
+                                                            ${errorChange > 0 ? '+' : ''}${(errorChange * 100).toFixed(1)}%
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-${transChange > 0 ? 'success' : transChange < 0 ? 'danger' : 'secondary'}">
+                                                            ${transChange > 0 ? '+' : ''}${transChange.toLocaleString()}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-${merchant.trend === 'improving' ? 'success' : merchant.trend === 'declining' ? 'danger' : 'secondary'}">
+                                                            <i class="fas fa-${merchant.trend === 'improving' ? 'arrow-up' : merchant.trend === 'declining' ? 'arrow-down' : 'minus'}"></i>
+                                                            ${merchant.trend}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('aiResults').innerHTML = resultsHtml;
             } catch (error) {
-                alert('Failed to load monthly comparison');
+                showError('aiResults', 'Failed to load monthly comparison');
             }
         }
 

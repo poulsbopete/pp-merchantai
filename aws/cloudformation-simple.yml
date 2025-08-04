@@ -206,11 +206,11 @@ Resources:
               Protocol: tcp
           Environment:
             - Name: ELASTICSEARCH_HOST
-              Value: 'ELASTICSEARCH_HOST_PLACEHOLDER'
+              Value: 'https://ai-assistants-ffcafb.es.us-east-1.aws.elastic.cloud'
             - Name: ELASTICSEARCH_PORT
               Value: '443'
             - Name: ELASTICSEARCH_USERNAME
-              Value: 'ELASTICSEARCH_USERNAME_PLACEHOLDER'
+              Value: 'dHBBNVlaZ0JuckxKTnZGLXhmWkU6UHZBQW5pRVNDUUJWQ2N0dU92dEI0UQ=='
             - Name: ELASTICSEARCH_INDEX
               Value: 'pp-merchantai'
             - Name: ELASTICSEARCH_USE_SSL

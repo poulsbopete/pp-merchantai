@@ -16,26 +16,37 @@ class ElasticClient:
             self.client = Elasticsearch(
                 cloud_id=settings.elasticsearch_cloud_id,
                 api_key=settings.elasticsearch_username if settings.elasticsearch_username else None,
-                verify_certs=True
+                verify_certs=not settings.debug  # Disable SSL verification in debug/production mode
             )
         else:
             # Use traditional host/port connection with API key
             host = settings.elasticsearch_host.replace("https://", "").replace("http://", "")
             hosts = [{"host": host, "port": int(settings.elasticsearch_port), "scheme": "https"}]
             
+            # Debug logging
+            logger.info(f"Elasticsearch host: {settings.elasticsearch_host}")
+            logger.info(f"Elasticsearch port: {settings.elasticsearch_port}")
+            logger.info(f"Elasticsearch username (API key): {settings.elasticsearch_username[:20]}..." if settings.elasticsearch_username else "None")
+            logger.info(f"Elasticsearch index: {settings.elasticsearch_index}")
+            logger.info(f"Debug mode: {settings.debug}")
+            
             # Use API key authentication for serverless
             if settings.elasticsearch_username and not settings.elasticsearch_password:
+                logger.info("Using API key authentication")
                 self.client = Elasticsearch(
                     hosts,
                     api_key=settings.elasticsearch_username,
-                    verify_certs=True
+                    verify_certs=not settings.debug,  # Disable SSL verification in debug/production mode
+                    ssl_show_warn=False  # Suppress SSL warnings
                 )
             else:
+                logger.info("Using basic auth")
                 # Fallback to basic auth if password is provided
                 self.client = Elasticsearch(
                     hosts,
                     basic_auth=(settings.elasticsearch_username, settings.elasticsearch_password) if settings.elasticsearch_username else None,
-                    verify_certs=True
+                    verify_certs=not settings.debug,  # Disable SSL verification in debug/production mode
+                    ssl_show_warn=False  # Suppress SSL warnings
                 )
         self.index = settings.elasticsearch_index
     
@@ -97,6 +108,9 @@ class ElasticClient:
                                 {"range": {"timestamp": {"gte": current_month_start.isoformat()}}},
                                 {"range": {"conversion_rate": {"lt": 0.5}}},  # Below 50%
                                 {"range": {"transaction_count": {"gte": settings.min_transaction_count}}}
+                            ],
+                            "must_not": [
+                                {"term": {"conversion_rate_resolved": True}}
                             ]
                         }
                     },
@@ -149,6 +163,9 @@ class ElasticClient:
                                 {"bool": {"must_not": {"exists": {"field": "city"}}}},
                                 {"term": {"country": ""}},
                                 {"term": {"city": ""}}
+                            ],
+                            "must_not": [
+                                {"term": {"location_resolved": True}}
                             ]
                         }
                     },
@@ -271,6 +288,9 @@ class ElasticClient:
                             "must": [
                                 {"range": {"error_rate": {"gte": settings.error_rate_threshold}}},
                                 {"range": {"transaction_count": {"gte": settings.min_transaction_count}}}
+                            ],
+                            "must_not": [
+                                {"term": {"error_rate_resolved": True}}
                             ]
                         }
                     },
@@ -344,3 +364,116 @@ class ElasticClient:
         except Exception as e:
             logger.error(f"Failed to search merchants: {e}")
             return [] 
+
+    async def get_resolution_history(self, merchant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get resolution history for issues"""
+        try:
+            query = {}
+            if merchant_id:
+                query = {"term": {"merchant_id": merchant_id}}
+            
+            response = self.client.search(
+                index=self.index,
+                body={
+                    "query": {
+                        "bool": {
+                            "must": [query] if query else [],
+                            "should": [
+                                {"term": {"location_resolved": True}},
+                                {"term": {"conversion_rate_resolved": True}},
+                                {"term": {"error_rate_resolved": True}}
+                            ],
+                            "minimum_should_match": 1
+                        }
+                    },
+                    "sort": [{"timestamp": {"order": "desc"}}],
+                    "size": 100
+                }
+            )
+            
+            resolutions = []
+            for hit in response["hits"]["hits"]:
+                source = hit["_source"]
+                resolution_data = {
+                    "merchant_id": source["merchant_id"],
+                    "merchant_name": source.get("merchant_name", "Unknown"),
+                    "timestamp": source.get("timestamp"),
+                    "resolutions": []
+                }
+                
+                # Check for different types of resolutions
+                if source.get("location_resolved"):
+                    resolution_data["resolutions"].append({
+                        "type": "location",
+                        "resolved_at": source.get("location_resolution_date"),
+                        "method": source.get("location_resolution_method"),
+                        "confidence": source.get("location_resolution_confidence"),
+                        "recommendation": source.get("location_ai_recommendation")
+                    })
+                
+                if source.get("conversion_rate_resolved"):
+                    resolution_data["resolutions"].append({
+                        "type": "conversion_rate",
+                        "resolved_at": source.get("conversion_rate_resolution_date"),
+                        "method": source.get("conversion_rate_resolution_method"),
+                        "confidence": source.get("conversion_rate_resolution_confidence"),
+                        "recommendation": source.get("conversion_rate_ai_recommendation")
+                    })
+                
+                if source.get("error_rate_resolved"):
+                    resolution_data["resolutions"].append({
+                        "type": "error_rate",
+                        "resolved_at": source.get("error_rate_resolution_date"),
+                        "method": source.get("error_rate_resolution_method"),
+                        "confidence": source.get("error_rate_resolution_confidence"),
+                        "recommendation": source.get("error_rate_ai_recommendation")
+                    })
+                
+                resolutions.append(resolution_data)
+            
+            return resolutions
+        except Exception as e:
+            logger.error(f"Failed to get resolution history: {e}")
+            return []
+
+    async def get_issue_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive issue statistics including resolved vs unresolved"""
+        try:
+            # Get all issues
+            conversion_issues = await self.get_conversion_rate_issues()
+            location_issues = await self.get_location_issues()
+            error_issues = await self.get_error_rate_issues()
+            
+            # Get resolution history
+            resolution_history = await self.get_resolution_history()
+            
+            # Count resolved issues by type
+            resolved_counts = {
+                "location": 0,
+                "conversion_rate": 0,
+                "error_rate": 0
+            }
+            
+            for resolution in resolution_history:
+                for res in resolution["resolutions"]:
+                    resolved_counts[res["type"]] += 1
+            
+            return {
+                "unresolved": {
+                    "conversion_rate": len(conversion_issues),
+                    "location": len(location_issues),
+                    "error_rate": len(error_issues),
+                    "total": len(conversion_issues) + len(location_issues) + len(error_issues)
+                },
+                "resolved": resolved_counts,
+                "total_resolved": sum(resolved_counts.values()),
+                "resolution_history": resolution_history
+            }
+        except Exception as e:
+            logger.error(f"Failed to get issue statistics: {e}")
+            return {
+                "unresolved": {"conversion_rate": 0, "location": 0, "error_rate": 0, "total": 0},
+                "resolved": {"location": 0, "conversion_rate": 0, "error_rate": 0},
+                "total_resolved": 0,
+                "resolution_history": []
+            } 

@@ -5,7 +5,7 @@
   "cpu": "512",
   "memory": "1024",
   "executionRoleArn": "arn:aws:iam::461485115270:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::461485115270:role/ecsTaskRole",
+  "taskRoleArn": "arn:aws:iam::461485115270:role/production-pp-merchantai-simple-ECSTaskRole-bV5GaFyBKpzH",
   "containerDefinitions": [
     {
       "name": "pp-merchantai-app",
@@ -19,7 +19,7 @@
       "environment": [
         {
           "name": "ELASTICSEARCH_HOST",
-          "value": ""
+          "value": "https://ai-assistants-ffcafb.es.us-east-1.aws.elastic.cloud"
         },
         {
           "name": "ELASTICSEARCH_PORT",
@@ -27,7 +27,7 @@
         },
         {
           "name": "ELASTICSEARCH_USERNAME",
-          "value": ""
+          "value": "VFpHZFpwZ0JuckxKTnZGLTF5SE46dFpMNGxfV3pEbVJYZTFRZHRNZkg4UQ=="
         },
         {
           "name": "ELASTICSEARCH_INDEX",
@@ -59,7 +59,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/pp-merchantai",
+                                  "awslogs-group": "/ecs/production-pp-merchantai",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }

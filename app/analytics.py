@@ -235,36 +235,40 @@ class AnalyticsService:
     async def get_dashboard_summary(self) -> Dict[str, Any]:
         """Get dashboard summary statistics"""
         try:
-            # Get all issues
-            conversion_issues = await self.elastic.get_conversion_rate_issues()
-            location_issues = await self.elastic.get_location_issues()
-            error_issues = await self.elastic.get_error_rate_issues()
-            
-            # Calculate summary statistics
-            total_issues = len(conversion_issues) + len(location_issues) + len(error_issues)
-            high_severity_issues = len([i for i in conversion_issues if i["severity"] == "high"]) + \
-                                 len([i for i in error_issues if i["severity"] == "high"])
+            # Get comprehensive issue statistics including resolved vs unresolved
+            issue_stats = await self.elastic.get_issue_statistics()
             
             # Get total merchants
             all_merchants = await self.elastic.get_merchants(size=1000)
             total_merchants = len(all_merchants)
             
+            # Calculate high severity issues (unresolved only)
+            conversion_issues = await self.elastic.get_conversion_rate_issues()
+            error_issues = await self.elastic.get_error_rate_issues()
+            high_severity_issues = len([i for i in conversion_issues if i["severity"] == "high"]) + \
+                                 len([i for i in error_issues if i["severity"] == "high"])
+            
             return {
                 "total_merchants": total_merchants,
-                "total_issues": total_issues,
+                "total_issues": issue_stats["unresolved"]["total"],
                 "high_severity_issues": high_severity_issues,
-                "conversion_rate_issues": len(conversion_issues),
-                "location_issues": len(location_issues),
-                "error_rate_issues": len(error_issues),
+                "conversion_rate_issues": issue_stats["unresolved"]["conversion_rate"],
+                "location_issues": issue_stats["unresolved"]["location"],
+                "error_rate_issues": issue_stats["unresolved"]["error_rate"],
                 "issue_distribution": {
-                    "conversion_rate": len(conversion_issues),
-                    "missing_location": len(location_issues),
-                    "high_error_rate": len(error_issues)
+                    "conversion_rate": issue_stats["unresolved"]["conversion_rate"],
+                    "missing_location": issue_stats["unresolved"]["location"],
+                    "high_error_rate": issue_stats["unresolved"]["error_rate"]
                 },
                 "risk_levels": {
                     "high": high_severity_issues,
-                    "medium": total_issues - high_severity_issues,
+                    "medium": issue_stats["unresolved"]["total"] - high_severity_issues,
                     "low": 0
+                },
+                "resolution_stats": {
+                    "total_resolved": issue_stats["total_resolved"],
+                    "resolved_by_type": issue_stats["resolved"],
+                    "resolution_rate": (issue_stats["total_resolved"] / (issue_stats["total_resolved"] + issue_stats["unresolved"]["total"])) * 100 if (issue_stats["total_resolved"] + issue_stats["unresolved"]["total"]) > 0 else 0
                 }
             }
         except Exception as e:
@@ -277,7 +281,12 @@ class AnalyticsService:
                 "location_issues": 0,
                 "error_rate_issues": 0,
                 "issue_distribution": {},
-                "risk_levels": {"high": 0, "medium": 0, "low": 0}
+                "risk_levels": {"high": 0, "medium": 0, "low": 0},
+                "resolution_stats": {
+                    "total_resolved": 0,
+                    "resolved_by_type": {"location": 0, "conversion_rate": 0, "error_rate": 0},
+                    "resolution_rate": 0
+                }
             }
     
     async def resolve_location_issues_with_ai(self) -> List[LocationResolution]:
@@ -320,7 +329,13 @@ class AnalyticsService:
             # Update the merchant's location data
             update_body = {
                 "doc": {
-                    "location": resolution.resolved_location
+                    "location": resolution.resolved_location,
+                    "country": resolution.resolved_location.get("country"),
+                    "city": resolution.resolved_location.get("city"),
+                    "location_resolved": True,
+                    "location_resolution_date": datetime.now().isoformat(),
+                    "location_resolution_method": "ai_automated",
+                    "location_resolution_confidence": resolution.confidence_score
                 }
             }
             
@@ -344,6 +359,111 @@ class AnalyticsService:
             logger.info(f"Updated location for merchant {resolution.merchant_id}")
         except Exception as e:
             logger.error(f"Failed to update merchant location: {e}")
+
+    async def _update_conversion_rate_resolution(self, merchant_id: str, recommendation: str, confidence_score: float):
+        """Update merchant conversion rate resolution in Elasticsearch"""
+        try:
+            update_body = {
+                "doc": {
+                    "conversion_rate_resolved": True,
+                    "conversion_rate_resolution_date": datetime.now().isoformat(),
+                    "conversion_rate_resolution_method": "ai_analysis",
+                    "conversion_rate_resolution_confidence": confidence_score,
+                    "conversion_rate_ai_recommendation": recommendation,
+                    "conversion_rate_status": "under_review"
+                }
+            }
+            
+            # Find and update all documents for this merchant
+            search_response = await self.elastic.client.search(
+                index=self.elastic.index,
+                body={
+                    "query": {"term": {"merchant_id": merchant_id}},
+                    "size": 1000
+                }
+            )
+            
+            for hit in search_response["hits"]["hits"]:
+                doc_id = hit["_id"]
+                await self.elastic.client.update(
+                    index=self.elastic.index,
+                    id=doc_id,
+                    body=update_body
+                )
+            
+            logger.info(f"Updated conversion rate resolution for merchant {merchant_id}")
+        except Exception as e:
+            logger.error(f"Failed to update conversion rate resolution: {e}")
+
+    async def _update_error_rate_resolution(self, merchant_id: str, recommendation: str, confidence_score: float):
+        """Update merchant error rate resolution in Elasticsearch"""
+        try:
+            update_body = {
+                "doc": {
+                    "error_rate_resolved": True,
+                    "error_rate_resolution_date": datetime.now().isoformat(),
+                    "error_rate_resolution_method": "ai_analysis",
+                    "error_rate_resolution_confidence": confidence_score,
+                    "error_rate_ai_recommendation": recommendation,
+                    "error_rate_status": "under_review"
+                }
+            }
+            
+            # Find and update all documents for this merchant
+            search_response = await self.elastic.client.search(
+                index=self.elastic.index,
+                body={
+                    "query": {"term": {"merchant_id": merchant_id}},
+                    "size": 1000
+                }
+            )
+            
+            for hit in search_response["hits"]["hits"]:
+                doc_id = hit["_id"]
+                await self.elastic.client.update(
+                    index=self.elastic.index,
+                    id=doc_id,
+                    body=update_body
+                )
+            
+            logger.info(f"Updated error rate resolution for merchant {merchant_id}")
+        except Exception as e:
+            logger.error(f"Failed to update error rate resolution: {e}")
+
+    async def _mark_issue_resolved(self, merchant_id: str, issue_type: str, resolution_data: dict):
+        """Generic method to mark any issue as resolved"""
+        try:
+            update_body = {
+                "doc": {
+                    f"{issue_type}_resolved": True,
+                    f"{issue_type}_resolution_date": datetime.now().isoformat(),
+                    f"{issue_type}_resolution_method": resolution_data.get("method", "ai_analysis"),
+                    f"{issue_type}_resolution_confidence": resolution_data.get("confidence", 0.8),
+                    f"{issue_type}_ai_recommendation": resolution_data.get("recommendation", ""),
+                    f"{issue_type}_status": "resolved"
+                }
+            }
+            
+            # Find and update all documents for this merchant
+            search_response = await self.elastic.client.search(
+                index=self.elastic.index,
+                body={
+                    "query": {"term": {"merchant_id": merchant_id}},
+                    "size": 1000
+                }
+            )
+            
+            for hit in search_response["hits"]["hits"]:
+                doc_id = hit["_id"]
+                await self.elastic.client.update(
+                    index=self.elastic.index,
+                    id=doc_id,
+                    body=update_body
+                )
+            
+            logger.info(f"Marked {issue_type} as resolved for merchant {merchant_id}")
+        except Exception as e:
+            logger.error(f"Failed to mark {issue_type} as resolved: {e}")
     
     async def get_ai_insights(self, merchant_id: str) -> str:
         """Get AI-powered insights for a specific merchant"""
@@ -390,14 +510,25 @@ class AnalyticsService:
                 if merchant_data:
                     # Generate AI recommendation
                     recommendation = llm_agent.generate_conversion_rate_recommendation(merchant_data, issue)
+                    confidence_score = 0.85
+                    
+                    # Update Elasticsearch to mark this issue as resolved
+                    await self._update_conversion_rate_resolution(
+                        issue["merchant_id"], 
+                        recommendation, 
+                        confidence_score
+                    )
+                    
                     ai_recommendations.append({
                         "merchant_id": issue["merchant_id"],
                         "merchant_name": merchant_data.get("merchant_name", "Unknown"),
                         "current_conversion_rate": issue["conversion_rate"],
                         "issue_severity": issue["severity"],
                         "ai_recommendation": recommendation,
-                        "confidence_score": 0.85,
-                        "resolution_method": "ai_analysis"
+                        "confidence_score": confidence_score,
+                        "resolution_method": "ai_analysis",
+                        "resolved": True,
+                        "resolution_date": datetime.now().isoformat()
                     })
             
             return ai_recommendations
@@ -423,14 +554,25 @@ class AnalyticsService:
                 if merchant_data:
                     # Generate AI recommendation
                     recommendation = llm_agent.generate_error_rate_recommendation(merchant_data, issue)
+                    confidence_score = 0.82
+                    
+                    # Update Elasticsearch to mark this issue as resolved
+                    await self._update_error_rate_resolution(
+                        issue["merchant_id"], 
+                        recommendation, 
+                        confidence_score
+                    )
+                    
                     ai_recommendations.append({
                         "merchant_id": issue["merchant_id"],
                         "merchant_name": merchant_data.get("merchant_name", "Unknown"),
                         "current_error_rate": issue["error_rate"],
                         "issue_severity": issue["severity"],
                         "ai_recommendation": recommendation,
-                        "confidence_score": 0.82,
-                        "resolution_method": "ai_analysis"
+                        "confidence_score": confidence_score,
+                        "resolution_method": "ai_analysis",
+                        "resolved": True,
+                        "resolution_date": datetime.now().isoformat()
                     })
             
             return ai_recommendations

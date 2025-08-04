@@ -42,18 +42,17 @@ def test_api_key_auth():
         return False
     
     try:
-        # Decode the API key
-        api_key = base64.b64decode(username).decode('utf-8')
-        logger.info(f"Decoded API key: {api_key[:20]}...{api_key[-20:]}")
+        # Use the API key as-is (base64 encoded)
+        logger.info(f"Using API key: {username[:20]}...{username[-20:]}")
         
         # Test with requests first
-        headers = {"Authorization": f"ApiKey {api_key}"}
+        headers = {"Authorization": f"ApiKey {username}"}
         response = requests.get(f"{host}/", headers=headers, timeout=10)
         logger.info(f"API Key auth response: {response.status_code}")
         logger.info(f"Response body: {response.text[:200]}")
         
         # Test with Elasticsearch client
-        client = Elasticsearch([host], api_key=api_key, verify_certs=True)
+        client = Elasticsearch([host], api_key=username, verify_certs=True)
         info = client.info()
         logger.info(f"Elasticsearch client connection successful: {info['cluster_name']}")
         return True

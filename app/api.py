@@ -305,4 +305,22 @@ async def resolve_error_rate_issues_with_ai():
         return recommendations
     except Exception as e:
         logger.error(f"Failed to resolve error rate issues with AI: {e}")
-        raise HTTPException(status_code=500, detail="Failed to resolve error rate issues with AI") 
+        raise HTTPException(status_code=500, detail="Failed to resolve error rate issues with AI")
+
+@app.get("/api/analytics/resolution-history")
+async def get_resolution_history(merchant_id: Optional[str] = None):
+    """Get resolution history for issues"""
+    try:
+        return await elastic_client.get_resolution_history(merchant_id)
+    except Exception as e:
+        logger.error(f"Failed to get resolution history: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get resolution history")
+
+@app.get("/api/analytics/issue-statistics")
+async def get_issue_statistics():
+    """Get comprehensive issue statistics including resolved vs unresolved"""
+    try:
+        return await elastic_client.get_issue_statistics()
+    except Exception as e:
+        logger.error(f"Failed to get issue statistics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get issue statistics") 
